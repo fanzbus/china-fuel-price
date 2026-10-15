@@ -81,7 +81,7 @@ export default {
       if (url.pathname === "/api/history") {
         const raw = await loadText(env, url, "history.jsonl");
         const rows = raw.trim() ? raw.trim().split("\n").map((l) => JSON.parse(l)) : [];
-        return json({ history_start: "2026-10-15", count: rows.length, note: "历史从 2026-10-15 开始积累，只有一个点就只画一个点。", snapshots: rows });
+        return json({ history_start: "2026-01-06", count: rows.length, note: "历史从 2026-01-06 开始（20 个调价点，2026-10-15 实测，其余按调价幅度反推）。", snapshots: rows });
       }
       if (url.pathname === "/api/trend") {
         const raw = await loadText(env, url, "history.jsonl");
@@ -93,7 +93,7 @@ export default {
           const hit = (s.provinces || []).find((r) => r.province === province);
           return { date: (s.fetched_at || "").slice(0, 10), fetched_at: s.fetched_at, price: hit ? hit[key] : null };
         }).filter((x) => x.price !== null);
-        return json({ province, fuel: FUEL_LABEL[key], history_start: "2026-10-15", count: series.length, series });
+        return json({ province, fuel: FUEL_LABEL[key], history_start: "2026-01-06", count: series.length, series });
       }
       if (url.pathname === "/api/export.csv") {
         const prices = await loadJson(env, url, "prices.json");
