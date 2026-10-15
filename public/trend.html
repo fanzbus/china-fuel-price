@@ -98,11 +98,17 @@ function renderHistory() {
   list.innerHTML = pageRows.map(s => {
     const cur = (s.provinces || []).find(r => r.province === CURRENT);
     const d = s.delta || {};
-    const fmtDelta = (v) => v == null ? '—' : (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? v.toFixed(2) : '±0.00');
+    const status = (s.adjustment_status || '').includes('上调') ? '上调' : (s.adjustment_status || '').includes('下调') ? '下调' : (s.adjustment_status || '').includes('搁浅') ? '搁浅' : (s.adjustment_status || '');
+    const statusCls = status === '上调' ? 'badge-error badge-soft' : status === '下调' ? 'badge-success badge-soft' : 'badge-ghost';
+    const deltaCell = (label, v) => {
+      const txt = v == null ? '—' : (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? v.toFixed(2) : '±0.00');
+      const cls = v == null ? 'opacity-50' : v > 0 ? 'text-error' : v < 0 ? 'text-success' : 'opacity-50';
+      return `<span class="inline-flex w-[68px] items-baseline justify-between gap-1 whitespace-nowrap"><span class="opacity-60">${label}</span><b class="font-semibold tabular-nums ${cls}">${txt}</b></span>`;
+    };
     const deltaHtml = (d.p92 != null || d.p95 != null || d.p98 != null || d.d0 != null)
-      ? ` <span class="text-xs font-normal opacity-70 whitespace-nowrap">92 ${fmtDelta(d.p92)} / 95 ${fmtDelta(d.p95)} / 98 ${fmtDelta(d.p98)} / 柴油 ${fmtDelta(d.d0)}</span>`
+      ? `<span class="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">${deltaCell('92', d.p92)}${deltaCell('95', d.p95)}${deltaCell('98', d.p98)}${deltaCell('柴油', d.d0)}</span>`
       : '';
-    return `<div class="card bg-base-100"><div class="card-body flex-col gap-1.5 p-4 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2"><span class="font-medium flex flex-wrap items-center gap-x-2 gap-y-1">${fmtDate(s.fetched_at)} · ${s.adjustment_status || ''}${deltaHtml}</span><span class="opacity-70 whitespace-nowrap">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
+    return `<div class="card bg-base-100"><div class="card-body flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4"><span class="flex flex-wrap items-center gap-x-3 gap-y-1.5"><span class="w-16 shrink-0 font-medium tabular-nums">${fmtDate(s.fetched_at)}</span><span class="badge ${statusCls} w-14 shrink-0 whitespace-nowrap">${status}</span>${deltaHtml}</span><span class="shrink-0 whitespace-nowrap tabular-nums opacity-70 sm:ml-auto sm:text-right">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
   }).join('');
   renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
 }
