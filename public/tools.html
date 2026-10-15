@@ -42,7 +42,7 @@
     </div>
     <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label class="flex flex-col gap-1"><span class="text-xs opacity-70">省份</span><select id="calcProvince" data-province-select class="select select-bordered"></select></label>
-      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">油号</span><select id="calcFuel" class="select select-bordered"><option value="92">92号</option><option value="95" selected>95号</option><option value="98">98号</option><option value="0">0号柴油</option></select></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">油号</span><select id="calcFuel" class="select select-bordered"><option value="92" selected>92号</option><option value="95">95号</option><option value="98">98号</option><option value="0">0号柴油</option></select></label>
       <label class="flex flex-col gap-1"><span class="text-xs opacity-70">升数</span><input id="liters" type="number" value="50" min="0" step="0.1" class="input input-bordered tabular-nums"></label>
       <div class="flex items-end"><button id="calcBtn" class="btn btn-primary w-full">计算</button></div>
     </div>
@@ -103,8 +103,8 @@ function doCompare() {
   const p = CURRENT;
   const row = DATA.provinces.find(r => r.province === p) || DATA.provinces[0];
   const fu = +document.getElementById('fuelUse').value || 7.5, eu = +document.getElementById('elecUse').value || 15, ep = +document.getElementById('elecPrice').value || 0.6;
-  const oil = row.p95 * fu / 100, ele = eu * ep / 100;
-  document.getElementById('compareOut').innerHTML = `<div class="stats stats-vertical w-full shadow-sm sm:stats-horizontal"><div class="stat"><div class="stat-title text-xs">油车 · ${p} 95# ${row.p95.toFixed(2)} 元/升</div><div class="stat-value text-2xl tabular-nums">${oil.toFixed(2)}</div><div class="stat-desc">元 / km · 假设油耗 ${fu} L/100km</div></div><div class="stat"><div class="stat-title text-xs">电车</div><div class="stat-value text-2xl tabular-nums">${ele.toFixed(2)}</div><div class="stat-desc">元 / km · 假设电耗 ${eu} kWh/100km · 电价 ${ep} 元/kWh</div></div><div class="stat"><div class="stat-title text-xs">差值（油车 − 电车）</div><div class="stat-value text-2xl tabular-nums">${(oil - ele).toFixed(2)}</div><div class="stat-desc">元 / km</div></div></div>`;
+  const oil = row.p92 * fu / 100, ele = eu * ep / 100;
+  document.getElementById('compareOut').innerHTML = `<div class="stats stats-vertical w-full shadow-sm sm:stats-horizontal"><div class="stat"><div class="stat-title text-xs">油车 · ${p} 92# ${row.p92.toFixed(2)} 元/升</div><div class="stat-value text-2xl tabular-nums">${oil.toFixed(2)}</div><div class="stat-desc">元 / km · 假设油耗 ${fu} L/100km</div></div><div class="stat"><div class="stat-title text-xs">电车</div><div class="stat-value text-2xl tabular-nums">${ele.toFixed(2)}</div><div class="stat-desc">元 / km · 假设电耗 ${eu} kWh/100km · 电价 ${ep} 元/kWh</div></div><div class="stat"><div class="stat-title text-xs">差值（油车 − 电车）</div><div class="stat-value text-2xl tabular-nums">${(oil - ele).toFixed(2)}</div><div class="stat-desc">元 / km</div></div></div>`;
 }
 function renderLedger() {
   const arr = JSON.parse(localStorage.getItem('china-fuel-ledger') || '[]');
