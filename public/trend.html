@@ -58,8 +58,9 @@ canvas{width:100%;height:auto;max-height:280px}
       <div id="calendar" class="alert alert-info mt-2"><span>下次调整见首页；历史调价记录随每次抓取自动追加，已补全 2026 年 20 个调价点。</span></div>
     </div>
     <div class="mt-5 border-t border-base-300 pt-4">
-      <h3 class="text-sm font-semibold">历史快照</h3>
-      <div id="historyList" class="mt-2 space-y-2"></div>
+      <h3 class="text-sm font-semibold">历史快照 · <span id="histProvince"></span></h3>
+      <p class="mt-1 text-xs opacity-70">价格后小字为本次调价幅度，红涨绿跌</p>
+      <div id="historyList" class="mt-2"></div>
       <div id="histPagination" class="mt-3 flex flex-wrap items-center justify-between gap-3"></div>
     </div>
   </div>
@@ -87,6 +88,7 @@ async function drawTrend() {
 }
 function renderHistory() {
   const list = document.getElementById('historyList');
+  document.getElementById('histProvince').textContent = CURRENT;
   if (!HISTORY.length) {
     list.innerHTML = '<div class="alert alert-info"><span>暂无历史快照。</span></div>';
     renderPagination(0, 1, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
@@ -95,21 +97,20 @@ function renderHistory() {
   const totalPages = Math.max(1, Math.ceil(HISTORY.length / PAGE_SIZE));
   if (HIST_PAGE > totalPages) HIST_PAGE = totalPages;
   const pageRows = HISTORY.slice((HIST_PAGE - 1) * PAGE_SIZE, HIST_PAGE * PAGE_SIZE);
-  list.innerHTML = pageRows.map(s => {
+  const priceCell = (price, delta) => {
+    if (price == null) return '<td class="tabular-nums">—</td>';
+    const txt = delta == null ? '' : delta > 0 ? `+${delta.toFixed(2)}` : delta < 0 ? delta.toFixed(2) : '±0.00';
+    const cls = delta == null ? '' : delta > 0 ? 'text-error' : delta < 0 ? 'text-success' : 'opacity-50';
+    return `<td class="tabular-nums whitespace-nowrap"><span class="font-semibold">${fmt(price)}</span>${delta == null ? '' : ` <span class="text-[11px] font-normal ${cls}">${txt}</span>`}</td>`;
+  };
+  const rowsHtml = pageRows.map(s => {
     const cur = (s.provinces || []).find(r => r.province === CURRENT);
     const d = s.delta || {};
     const status = (s.adjustment_status || '').includes('上调') ? '上调' : (s.adjustment_status || '').includes('下调') ? '下调' : (s.adjustment_status || '').includes('搁浅') ? '搁浅' : (s.adjustment_status || '');
     const statusCls = status === '上调' ? 'badge-error badge-soft' : status === '下调' ? 'badge-success badge-soft' : 'badge-ghost';
-    const deltaCell = (label, v) => {
-      const txt = v == null ? '—' : (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? v.toFixed(2) : '±0.00');
-      const cls = v == null ? 'opacity-50' : v > 0 ? 'text-error' : v < 0 ? 'text-success' : 'opacity-50';
-      return `<span class="inline-flex w-[68px] items-baseline justify-between gap-1 whitespace-nowrap"><span class="opacity-60">${label}</span><b class="font-semibold tabular-nums ${cls}">${txt}</b></span>`;
-    };
-    const deltaHtml = (d.p92 != null || d.p95 != null || d.p98 != null || d.d0 != null)
-      ? `<span class="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">${deltaCell('92', d.p92)}${deltaCell('95', d.p95)}${deltaCell('98', d.p98)}${deltaCell('柴油', d.d0)}</span>`
-      : '';
-    return `<div class="card bg-base-100"><div class="card-body flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4"><span class="flex flex-wrap items-center gap-x-3 gap-y-1.5"><span class="w-16 shrink-0 font-medium tabular-nums">${fmtDate(s.fetched_at)}</span><span class="badge ${statusCls} w-14 shrink-0 whitespace-nowrap">${status}</span>${deltaHtml}</span><span class="shrink-0 whitespace-nowrap tabular-nums opacity-70 sm:ml-auto sm:text-right">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
+    return `<tr><td class="whitespace-nowrap font-medium tabular-nums">${fmtDate(s.fetched_at)}</td><td><span class="badge ${statusCls} w-14 whitespace-nowrap">${status}</span></td>${priceCell(cur ? cur.p92 : null, d.p92)}${priceCell(cur ? cur.p95 : null, d.p95)}${priceCell(cur ? cur.p98 : null, d.p98)}${priceCell(cur ? cur.d0 : null, d.d0)}</tr>`;
   }).join('');
+  list.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300 bg-base-100"><table class="table w-full min-w-[680px] text-sm"><thead><tr><th class="whitespace-nowrap">日期</th><th class="whitespace-nowrap">状态</th><th class="whitespace-nowrap">92号汽油</th><th class="whitespace-nowrap">95号汽油</th><th class="whitespace-nowrap">98号汽油</th><th class="whitespace-nowrap">0号柴油</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
   renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
 }
 window.onProvinceChange = () => { drawTrend(); renderHistory(); };
