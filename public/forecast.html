@@ -214,13 +214,15 @@ function renderForecast() {
   const est = Number(fc.estimated_adjustment_yuan_per_ton) || 0;
   const dirColor = est > 0 ? 'text-error' : est < 0 ? 'text-success' : '';
   const arrow = est > 0 ? '↑' : est < 0 ? '↓' : '—';
+  const badgeText = fc.direction === '上调' ? '预计上调' : fc.direction === '下调' ? '预计下调' : '搁浅';
+  const badgeClass = fc.direction === '上调' ? 'badge-error' : fc.direction === '下调' ? 'badge-success' : 'badge-ghost';
   const range = fc.estimated_adjustment_range || {};
   const rangeColor = (range.low || 0) < 0 && (range.high || 0) < 0 ? 'text-success' : (range.low || 0) > 0 && (range.high || 0) > 0 ? 'text-error' : '';
   const changeColor = (Number(fc.change_rate_pct) || 0) > 0 ? 'text-error' : (Number(fc.change_rate_pct) || 0) < 0 ? 'text-success' : '';
   box.innerHTML = `
     <div class="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
-        <p class="${dirColor} text-lg font-bold leading-tight whitespace-nowrap">${arrow} 预计${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2"><span class="badge ${badgeClass} whitespace-nowrap">${badgeText}</span><span class="${dirColor} text-lg font-bold leading-tight whitespace-nowrap tabular-nums">${arrow} 约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</span></div>
         <p class="${rangeColor} text-xs font-semibold whitespace-nowrap">区间 ${range.low} ~ ${range.high} 元/吨</p>
       </div>
       <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
