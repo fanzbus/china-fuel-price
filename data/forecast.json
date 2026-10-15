@@ -1,0 +1,15 @@
+{
+  "status": "no_data",
+  "as_of": null,
+  "change_rate_pct": null,
+  "direction": null,
+  "estimated_adjustment_yuan_per_ton": null,
+  "confidence": null,
+  "formula": "10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。本字段为规则计算，非人工预测。",
+  "method": "取 Stooq Brent (brn.f) 与 WTI (cl.f) 最近 10 个工作日收盘价均值，与上一周期均值比较；汇率用 ER-API USD/CNY。任一上游取不到则 status=no_data，不编造。",
+  "note": "暂无预测数据：上游公开源尚未在自动任务中验证通过。",
+  "sources": {
+    "fx": "https://open.er-api.com/v6/latest/USD",
+    "oil": "https://stooq.com/q/d/l/?s=brn.f&i=d 与 cl.f"
+  }
+}
