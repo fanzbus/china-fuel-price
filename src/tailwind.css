@@ -1,4 +1,64 @@
 @import "tailwindcss";
+@plugin "daisyui";
+
+/* DaisyUI 主题：与现有视觉一致（暖白底 + 深墨字 + 品牌蓝 / 暗色 #0B0F14）。
+   暗色由 JS 同时设置 .dark class（供 Tailwind dark: 用）与 data-theme（供 DaisyUI 用），两者同步。 */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #fafaf8;
+  --color-base-200: #ffffff;
+  --color-base-300: #e7e5de;
+  --color-base-content: #1c1917;
+  --color-primary: #1d4ed8;
+  --color-primary-content: #ffffff;
+  --color-secondary: #1c1917;
+  --color-secondary-content: #ffffff;
+  --color-accent: #1d4ed8;
+  --color-accent-content: #ffffff;
+  --color-neutral: #1c1917;
+  --color-neutral-content: #ffffff;
+  --color-info: #1d4ed8;
+  --color-info-content: #ffffff;
+  --color-success: #059669;
+  --color-success-content: #ffffff;
+  --color-warning: #d97706;
+  --color-warning-content: #ffffff;
+  --color-error: #dc2626;
+  --color-error-content: #ffffff;
+  --radius-selector: 12px;
+  --radius-field: 12px;
+  --radius-box: 20px;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  color-scheme: dark;
+  --color-base-100: #0b0f14;
+  --color-base-200: #12181f;
+  --color-base-300: #1e293b;
+  --color-base-content: #f1f5f9;
+  --color-primary: #3b82f6;
+  --color-primary-content: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-content: #0b0f14;
+  --color-accent: #3b82f6;
+  --color-accent-content: #ffffff;
+  --color-neutral: #f1f5f9;
+  --color-neutral-content: #0b0f14;
+  --color-info: #3b82f6;
+  --color-info-content: #ffffff;
+  --color-success: #34d399;
+  --color-success-content: #0b0f14;
+  --color-warning: #fbbf24;
+  --color-warning-content: #0b0f14;
+  --color-error: #f87171;
+  --color-error-content: #0b0f14;
+  --radius-selector: 12px;
+  --radius-field: 12px;
+  --radius-box: 20px;
+}
 
 @custom-variant dark (&:where(.dark, .dark *));
 
