@@ -105,8 +105,8 @@
 </section>
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
-  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 10月15日开始积累</span>
-  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+  <span>数据来源：qiyoujiage.com（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 10月15日开始积累</span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a></span>
 </footer>
 <script>
 let DATA = null, FORECAST = null, GLOBAL_DATA = null, CITIES_DATA = null, CITY_PROV = '上海';
@@ -128,7 +128,7 @@ function renderGlobal() {
   }).join('');
   const partial = g.status === 'partial' ? `<div class="alert alert-warning mt-3"><span>部分来源暂不可用：${(g.errors || []).join('；') || '见数据说明'}</span></div>` : '';
   box.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300"><table class="table w-full min-w-[720px] text-sm"><thead><tr><th>国家</th><th>95号汽油 (CNY/升)</th><th>柴油 (CNY/升)</th><th>数据日期</th><th>来源</th></tr></thead><tbody>${rows}</tbody></table></div>
-  <p class="mt-2 text-xs opacity-70">日本 / 韩国 / 印度 / 巴西等暂无免费稳定官方零售价源，保持待接入，不编造数据。<a href="https://www.globalpetrolprices.com/gasoline_prices/" class="underline">在 GlobalPetrolPrices 查看</a></p>${partial}`;
+  ${partial}`;
 }
 function renderCities() {
   const box = document.getElementById('cityBox');
