@@ -17,6 +17,30 @@ function fmtSigned(n, digits) {
   if (n < 0) return v;
   return '±' + Math.abs(n).toFixed(d);
 }
+/* 日期时间友好格式：同年省略年份，如“10月15日 20:09”；跨年显示“2026年10月15日”。 */
+function fmtDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+  return y === new Date().getFullYear() ? `${m}月${day}日` : `${y}年${m}月${day}日`;
+}
+function fmtDateTime(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+  return `${fmtDate(v)} ${hh}:${mm}`;
+}
+function fmtCountdown(target) {
+  if (!target) return '';
+  const diff = new Date(target) - new Date();
+  if (diff <= 0) return '即将调整';
+  const totalHours = Math.round(diff / 3600000);
+  if (totalHours < 24) return `约 ${totalHours} 小时后`;
+  const days = Math.floor(totalHours / 24), hours = totalHours % 24;
+  return hours ? `约 ${days} 天 ${hours} 小时后` : `约 ${days} 天后`;
+}
 function getCurrentProvince() {
   try { const v = localStorage.getItem(PROVINCE_KEY); if (v) return v; } catch (e) {}
   return '上海';
