@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-paper: #fafaf8;
+  --color-card: #ffffff;
+  --color-line: #e7e5de;
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-brand: #1d4ed8;
+  --color-brand-soft: #eff6ff;
+  --color-night: #0b0f14;
+  --color-night-card: #12181f;
+  --color-night-line: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+/* 仅保留无法用工具类表达的样式：canvas 尺寸与滚动条 */
+canvas {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+}
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 113, 108, 0.35);
+  border-radius: 999px;
+}
