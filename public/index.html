@@ -43,9 +43,9 @@ canvas{width:100%;height:auto;max-height:280px}
   <div class="card-body">
     <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p class="text-[13px] opacity-70">今日 95 均价 · 全国 31 省平均</p>
+        <p class="text-[13px] opacity-70">今日 92 均价 · 全国 31 省平均</p>
         <div class="mt-1 flex items-baseline gap-2">
-          <span id="heroP95" class="text-[40px] font-bold leading-none tracking-tight tabular-nums">—</span>
+          <span id="heroP92" class="text-[40px] font-bold leading-none tracking-tight tabular-nums">—</span>
           <span class="text-sm opacity-70">元 / 升</span>
         </div>
         <p id="metaLine" class="mt-2 text-xs opacity-70">加载中…</p>
@@ -81,7 +81,7 @@ canvas{width:100%;height:auto;max-height:280px}
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">查询与排行</h2>
-      <p class="hidden text-xs opacity-70 sm:block" id="diffHint">价差以与当前省份 95 对比 · 红涨绿跌</p>
+      <p class="hidden text-xs opacity-70 sm:block" id="diffHint">价差以与当前省份 92 对比 · 红涨绿跌</p>
     </div>
     <div class="mt-4 flex flex-col gap-3 md:flex-row">
       <label class="input input-bordered flex flex-1 items-center gap-2">
@@ -95,20 +95,19 @@ canvas{width:100%;height:auto;max-height:280px}
       </div>
     </div>
     <div id="fuelTabs" role="tablist" class="tabs tabs-box mt-3"></div>
-    <div class="mt-4 overflow-x-auto rounded-xl border border-base-300">
+    <div class="mt-4 max-h-[560px] overflow-auto rounded-xl border border-base-300">
       <table class="table w-full min-w-[640px] text-sm">
         <thead><tr>
-          <th scope="col">省份</th>
-          <th scope="col" id="thP92">92号汽油</th>
-          <th scope="col" id="thP95">95号汽油</th>
-          <th scope="col" id="thP98">98号汽油</th>
-          <th scope="col" id="thD0">0号柴油</th>
-          <th scope="col" id="diffHeader">与当前省份 95 价差</th>
+          <th scope="col" class="sticky top-0 z-20 bg-base-200">省份</th>
+          <th scope="col" id="thP92" class="sticky top-0 z-20 bg-base-200">92号汽油</th>
+          <th scope="col" id="thP95" class="sticky top-0 z-20 bg-base-200">95号汽油</th>
+          <th scope="col" id="thP98" class="sticky top-0 z-20 bg-base-200">98号汽油</th>
+          <th scope="col" id="thD0" class="sticky top-0 z-20 bg-base-200">0号柴油</th>
+          <th scope="col" id="diffHeader" class="sticky top-0 z-20 bg-base-200">与当前省份 92 价差</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    <div id="pricePagination" class="mt-4 flex flex-wrap items-center justify-between gap-3"></div>
     <div class="mt-3 grid gap-3 md:grid-cols-2">
       <div class="card bg-base-100">
         <div class="card-body p-4">
@@ -144,7 +143,7 @@ canvas{width:100%;height:auto;max-height:280px}
 </footer>
 <script>
 let DATA = null;
-let FUEL = 'p95', DESC = true, PRICE_PAGE = 1;
+let FUEL = 'p92', DESC = true;
 function cycleProgress() {
   if (!DATA || !DATA.next_adjustment) return;
   const now = new Date(), t = new Date(DATA.next_adjustment);
@@ -159,7 +158,7 @@ function renderPrices() {
   document.getElementById('adjustPill').textContent = `下次调整：${DATA.next_adjustment_label || '—'} · ${DATA.adjustment_status || ''}`;
   document.getElementById('interpretation').textContent = DATA.interpretation || '';
   const avg = DATA.national_avg || {};
-  document.getElementById('heroP95').textContent = fmt(avg.p95);
+  document.getElementById('heroP92').textContent = fmt(avg.p92);
   document.getElementById('avgGrid').innerHTML = FUEL_KEYS.map(k => `<div class="stat"><div class="stat-title text-xs">全国均价 · ${KEY[k]}</div><div class="stat-value text-2xl tabular-nums">${fmt(avg[k])}</div><div class="stat-desc">元 / 升</div></div>`).join('');
   const t = new Date(DATA.next_adjustment); const now = new Date();
   document.getElementById('countdown').textContent = DATA.next_adjustment ? `距离下次调整约 ${Math.max(0, Math.round((t - now) / 3600000))} 小时` : '';
@@ -167,11 +166,12 @@ function renderPrices() {
   const cur = DATA.provinces.find(r => r.province === CURRENT) || DATA.provinces[0];
   document.getElementById('currentProvinceName').textContent = cur.province;
   document.getElementById('currentProvincePrices').innerHTML = FUEL_KEYS.map(k => `<div><p class="text-xs opacity-70">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tracking-tight tabular-nums">${fmt(cur[k])}</p></div>`).join('');
-  const dh = document.getElementById('diffHeader'); if (dh) dh.textContent = `与${CURRENT} 95 价差`;
-  const hint = document.getElementById('diffHint'); if (hint) hint.textContent = `价差以与${CURRENT} 95 对比 · 红涨绿跌`;
+  const dh = document.getElementById('diffHeader'); if (dh) dh.textContent = `与${CURRENT} 92 价差`;
+  const hint = document.getElementById('diffHint'); if (hint) hint.textContent = `价差以与${CURRENT} 92 对比 · 红涨绿跌`;
+  const sortSel = document.getElementById('sortSel'); if (sortSel) sortSel.value = FUEL;
   const tabs = document.getElementById('fuelTabs');
   tabs.innerHTML = FUEL_KEYS.map(k => `<button role="tab" data-k="${k}" class="tab ${k === FUEL ? 'tab-active' : ''}">${KEY[k]}</button>`).join('');
-  tabs.querySelectorAll('button').forEach(b => b.onclick = () => { FUEL = b.dataset.k; PRICE_PAGE = 1; renderPrices(); });
+  tabs.querySelectorAll('button').forEach(b => b.onclick = () => { FUEL = b.dataset.k; renderPrices(); });
   renderTable(); renderRank();
 }
 function filteredRows() {
@@ -183,9 +183,6 @@ function filteredRows() {
 function renderTable() {
   if (!DATA) return;
   const rows = filteredRows();
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  if (PRICE_PAGE > totalPages) PRICE_PAGE = totalPages;
-  const pageRows = rows.slice((PRICE_PAGE - 1) * PAGE_SIZE, PRICE_PAGE * PAGE_SIZE);
   const cur = DATA.provinces.find(r => r.province === CURRENT);
   for (const k of FUEL_KEYS) {
     const th = document.getElementById({ p92: 'thP92', p95: 'thP95', p98: 'thP98', d0: 'thD0' }[k]);
@@ -193,17 +190,25 @@ function renderTable() {
   }
   if (!rows.length) {
     document.getElementById('tbody').innerHTML = '<tr><td colspan="6" class="py-10 text-center"><p class="text-sm font-medium">没有匹配的省份</p><p class="mt-1 text-xs opacity-70">换个关键词试试，例如“上海 / 广东”</p></td></tr>';
-    renderPagination(0, 1, 'pricePagination', (p) => { PRICE_PAGE = p; renderTable(); });
     return;
   }
-  document.getElementById('tbody').innerHTML = pageRows.map(r => {
-    const diff = cur ? (r.p95 - cur.p95) : null;
+  // 当前省份置顶固定：从排序结果中抽出，放在第一行，sticky 在表头下方滚动不动；
+  // 搜索过滤掉当前省份时则不置顶，只显示过滤结果。表格不分页，全部显示。
+  let ordered = rows;
+  const curInRows = cur ? rows.find(r => r.province === CURRENT) : null;
+  if (curInRows) {
+    ordered = [curInRows, ...rows.filter(r => r.province !== CURRENT)];
+  }
+  document.getElementById('tbody').innerHTML = ordered.map(r => {
+    const diff = cur ? (r.p92 - cur.p92) : null;
     const diffHtml = diff == null ? '—' : diff === 0 ? '<span class="tabular-nums opacity-70">±0.00</span>' : diff > 0 ? `<span class="font-semibold text-error tabular-nums">↑ ${diff.toFixed(2)}</span>` : `<span class="font-semibold text-success tabular-nums">↓ ${Math.abs(diff).toFixed(2)}</span>`;
     const cell = (k) => `<td class="tabular-nums ${k === FUEL ? 'bg-primary/10 font-bold' : ''}">${fmt(r[k])}</td>`;
     const isCur = r.province === CURRENT;
-    return `<tr class="${isCur ? 'bg-primary/5' : ''}"><td class="font-medium">${r.province}${isCur ? '<span class="badge badge-primary badge-soft ml-2">当前</span>' : ''}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
+    if (isCur) {
+      return `<tr class="sticky top-11 z-10 bg-base-200 shadow-[0_1px_0_0_var(--color-base-300)]"><td class="font-medium">${r.province}<span class="badge badge-primary badge-soft ml-2">当前</span></td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
+    }
+    return `<tr><td class="font-medium">${r.province}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
   }).join('');
-  renderPagination(rows.length, PRICE_PAGE, 'pricePagination', (p) => { PRICE_PAGE = p; renderTable(); });
 }
 function renderRank() {
   const s = [...DATA.provinces].sort((a, b) => b[FUEL] - a[FUEL]);
@@ -220,8 +225,8 @@ async function load() {
   initProvinceSwitcher(() => renderPrices());
   renderPrices();
 }
-document.getElementById('q').oninput = () => { PRICE_PAGE = 1; renderTable(); };
-document.getElementById('sortSel').onchange = e => { FUEL = e.target.value; PRICE_PAGE = 1; renderPrices(); };
+document.getElementById('q').oninput = () => { renderTable(); };
+document.getElementById('sortSel').onchange = e => { FUEL = e.target.value; renderPrices(); };
 document.getElementById('sortDir').onclick = e => { DESC = !DESC; e.target.textContent = DESC ? '↓ 降序' : '↑ 升序'; renderTable(); };
 registerSW();
 load();
