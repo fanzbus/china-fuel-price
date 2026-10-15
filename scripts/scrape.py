@@ -81,6 +81,99 @@ def parse_prices(html):
     return provinces, next_label, status
 
 
+# ---- 城市级价格（qiyoujiage.com 城市页，与省表同源）----
+# 省拼音例外：陕西 shanxi-3（与山西 shanxi 区分）、内蒙古 neimenggu、黑龙江 heilongjiang、西藏 xizang
+PROVINCE_PINYIN = {
+    "云南": "yunnan", "陕西": "shanxi-3", "四川": "sichuan", "辽宁": "liaoning",
+    "新疆": "xinjiang", "青海": "qinghai", "西藏": "xizang", "贵州": "guizhou",
+    "内蒙古": "neimenggu", "黑龙江": "heilongjiang",
+}
+NON_UNIFIED = ["云南", "陕西", "四川", "辽宁", "新疆", "青海", "西藏", "贵州", "内蒙古", "黑龙江"]
+CITY_PRICE_RE = re.compile(r"<dt>[^<]*?(92#|95#|98#|0#)[^<]*</dt>\s*<dd>([\d.]+)</dd>")
+CITY_FUEL_KEY = {"92#": "p92", "95#": "p95", "98#": "p98", "0#": "d0"}
+
+
+def parse_city_list(html, prov_pinyin):
+    """从省页解析城市链接：href="/{省}/{市}.shtml"，锚文本如“成都汽油价格”。
+
+    只取恰好两段的链接，排除 /{省}/{市}/{区}.shtml 这类区县链接与 /jiayouzhan/ 前缀链接。
+    返回 [(pinyin, city_name)]，按 pinyin 去重排序。
+    """
+    seen = {}
+    pat = re.compile(rf'href="/{re.escape(prov_pinyin)}/([a-z0-9\-]+)\.shtml"[^>]*>([^<]+)</a>')
+    for m in pat.finditer(html):
+        pinyin, label = m.group(1), m.group(2).strip()
+        name = re.sub(r"汽油价格\s*$", "", label).strip() or label
+        seen[pinyin] = name
+    return sorted(seen.items())
+
+
+def parse_city_prices(html):
+    """解析城市页 <div id="youjia"> 内 dl/dt/dd，返回 {p92, p95, p98, d0}（缺失为 None，不编 0）。"""
+    out = {}
+    for m in CITY_PRICE_RE.finditer(html):
+        try:
+            out[CITY_FUEL_KEY[m.group(1)]] = float(m.group(2))
+        except ValueError:
+            continue
+    return out
+
+
+def fetch_cities():
+    """抓 10 个非统一价省的全部城市页。失败时返回 status=error/partial，由调用方决定保留旧文件。
+
+    校验：单价 3.0–15.0；95>92、98>95（均存在时）；任一不满足 -> status=anomaly，价格仍存入但前端不展示、标“待核对”。
+    缺 92#（无基准价）或抓取失败 -> 跳过该市，记入 errors。
+    """
+    fetched_at = datetime.now(CST).isoformat(timespec="seconds")
+    provinces_out, errors, total = {}, [], 0
+    for prov in NON_UNIFIED:
+        pinyin = PROVINCE_PINYIN[prov]
+        try:
+            prov_html = fetch_text(f"http://www.qiyoujiage.com/{pinyin}.shtml")
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{prov} 省页抓取失败: {e}")
+            continue
+        cities = parse_city_list(prov_html, pinyin)
+        if not cities:
+            errors.append(f"{prov} 未发现城市链接")
+            continue
+        rows = []
+        for city_pinyin, city_name in cities:
+            url = f"http://www.qiyoujiage.com/{pinyin}/{city_pinyin}.shtml"
+            try:
+                prices = parse_city_prices(fetch_text(url))
+                time.sleep(0.3)  # 小延迟，低频
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{prov}{city_name} 抓取失败: {e}")
+                continue
+            if prices.get("p92") is None:
+                errors.append(f"{prov}{city_name} 缺 92# 价格，跳过")
+                continue
+            status = "ok"
+            for v in prices.values():
+                if v is not None and not (3.0 <= v <= 15.0):
+                    status = "anomaly"
+            p92, p95, p98 = prices.get("p92"), prices.get("p95"), prices.get("p98")
+            if p92 is not None and p95 is not None and not (p95 > p92):
+                status = "anomaly"
+            if p95 is not None and p98 is not None and not (p98 > p95):
+                status = "anomaly"
+            rows.append({"city": city_name, "pinyin": city_pinyin,
+                         "p92": p92, "p95": p95, "p98": p98, "d0": prices.get("d0"),
+                         "source_url": url, "status": status})
+            total += 1
+        if rows:
+            provinces_out[prov] = rows
+        else:
+            errors.append(f"{prov} 无可用城市数据")
+    ok = bool(provinces_out) and total >= 60  # 期望约 124 城，低于 60 视为异常，不覆盖旧文件
+    return {"fetched_at": fetched_at, "source": "qiyoujiage.com",
+            "source_url": SOURCE_URL, "status": "ok" if ok else "error",
+            "non_unified_provinces": NON_UNIFIED,
+            "provinces": provinces_out, "count": total, "errors": errors}
+
+
 def _fred_series(series_id):
     """FRED 每日现货价 CSV：DATE,VALUE，空值（节假日）跳过。返回 [(date, price)]。"""
     csv_text = fetch_text(
@@ -270,6 +363,19 @@ def main():
         print("history unchanged, not appended")
 
     (DATA / "prices.json").write_text(json.dumps(prices, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # 城市级：失败保留旧文件，不写脏数据，不影响省表抓取
+    cities_result = None
+    try:
+        cities_result = fetch_cities()
+        if cities_result.get("status") == "ok":
+            (DATA / "cities.json").write_text(json.dumps(cities_result, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"cities OK count={cities_result['count']} provinces={len(cities_result['provinces'])} errors={len(cities_result['errors'])}")
+        else:
+            print(f"cities skipped (keep old): status={cities_result.get('status')} count={cities_result.get('count')} errors={cities_result.get('errors')}")
+    except Exception as e:  # noqa: BLE001 — 城市失败不影响省表
+        print(f"cities failed (keep old): {e}")
+
     # meta：保留 history_start，更新 fetched_at
     meta_path = DATA / "meta.json"
     meta = {}
@@ -283,6 +389,11 @@ def main():
                  "next_adjustment": next_iso, "next_adjustment_label": next_label,
                  "adjustment_status": status,
                  "history_start": meta.get("history_start", "2026-10-15")})
+    if cities_result and cities_result.get("status") == "ok":
+        meta["cities_status"] = "ok"
+        meta.setdefault("data_quality", {})["cities"] = (
+            f"城市级价格已接入：{cities_result['count']} 个城市（10 个非统一价省），"
+            "来源 qiyoujiage.com 城市页；异常标“待核对”不展示，缺失显示 —。")
     (meta_path).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     try:
