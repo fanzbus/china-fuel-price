@@ -60,6 +60,7 @@ Webhook：轮询 `/api/meta` 的 `fetched_at` 或订阅 `/rss.xml`。暂不提�
 ```bash
 npm install
 npm run sync-data   # data/ -> public/data/
+npm run build:css   # Tailwind CLI：src/tailwind.css -> public/tailwind.css（改样式后必跑）
 npm run dev         # wrangler dev，默认 http://localhost:8787
 curl localhost:8787/api/prices | head -c 500
 curl localhost:8787/health
