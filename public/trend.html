@@ -97,7 +97,12 @@ function renderHistory() {
   const pageRows = HISTORY.slice((HIST_PAGE - 1) * PAGE_SIZE, HIST_PAGE * PAGE_SIZE);
   list.innerHTML = pageRows.map(s => {
     const cur = (s.provinces || []).find(r => r.province === CURRENT);
-    return `<div class="card bg-base-100"><div class="card-body flex-row flex-wrap items-center justify-between gap-2 p-4 text-sm"><span class="font-medium">${fmtDate(s.fetched_at)} · ${s.adjustment_status || ''}</span><span class="opacity-70">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
+    const d = s.delta || {};
+    const fmtDelta = (v) => v == null ? '—' : (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? v.toFixed(2) : '±0.00');
+    const deltaHtml = (d.p92 != null || d.p95 != null || d.p98 != null || d.d0 != null)
+      ? ` <span class="text-xs font-normal opacity-70 whitespace-nowrap">92 ${fmtDelta(d.p92)} / 95 ${fmtDelta(d.p95)} / 98 ${fmtDelta(d.p98)} / 柴油 ${fmtDelta(d.d0)}</span>`
+      : '';
+    return `<div class="card bg-base-100"><div class="card-body flex-col gap-1.5 p-4 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2"><span class="font-medium flex flex-wrap items-center gap-x-2 gap-y-1">${fmtDate(s.fetched_at)} · ${s.adjustment_status || ''}${deltaHtml}</span><span class="opacity-70 whitespace-nowrap">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
   }).join('');
   renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
 }
