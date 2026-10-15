@@ -85,7 +85,7 @@
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">全球主要国家对比</h2>
-      <p class="hidden text-xs opacity-70 sm:block">待可验证来源</p>
+      <p class="hidden text-xs opacity-70 sm:block">欧盟 + 美国 + 中国 · 每周更新</p>
     </div>
     <div id="globalBox" class="mt-4"><div class="skeleton h-16 w-full"></div></div>
   </div>
@@ -96,7 +96,11 @@
       <h2 class="card-title text-[15px]">城市级价格</h2>
       <p class="hidden text-xs opacity-70 sm:block">非统一价省份拆到市</p>
     </div>
-    <div id="cityBox" class="mt-4"><div class="skeleton h-16 w-full"></div></div>
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <label class="text-sm" for="cityProvince">省份</label>
+      <select id="cityProvince" class="select select-bordered select-sm"></select>
+    </div>
+    <div id="cityBox" class="mt-3"><div class="skeleton h-16 w-full"></div></div>
   </div>
 </section>
 </main>
@@ -105,7 +109,58 @@
   <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
-let DATA = null, FORECAST = null;
+let DATA = null, FORECAST = null, GLOBAL_DATA = null, CITIES_DATA = null, CITY_PROV = '上海';
+function renderGlobal() {
+  const box = document.getElementById('globalBox');
+  const g = GLOBAL_DATA;
+  if (!g || g.status === 'pending' || !g.countries || !g.countries.length) {
+    box.innerHTML = emptyState('待接入', (g && g.note) || '', 'info');
+    return;
+  }
+  const rows = g.countries.map(c => {
+    let note = c.note ? `<span class="block text-[11px] opacity-60">${c.note}</span>` : '';
+    if (c.country === 'China' && c.p92_cny != null) {
+      note = `<span class="block text-[11px] opacity-60">92 ${fmt(c.p92_cny)} / 98 ${fmt(c.p98_cny)}（全国均价）</span>`;
+    }
+    const p95 = c.p95_cny != null ? fmt(c.p95_cny) : '—';
+    const dsl = c.diesel_cny != null ? fmt(c.diesel_cny) : '—';
+    return `<tr><td class="font-medium whitespace-nowrap">${c.country_cn || c.country}${note}</td><td class="tabular-nums">${p95}</td><td class="tabular-nums">${dsl}</td><td class="tabular-nums whitespace-nowrap">${fmtDate(c.as_of)}</td><td class="text-xs opacity-70">${c.source || ''}</td></tr>`;
+  }).join('');
+  const partial = g.status === 'partial' ? `<div class="alert alert-warning mt-3"><span>部分来源暂不可用：${(g.errors || []).join('；') || '见数据说明'}</span></div>` : '';
+  box.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300"><table class="table w-full min-w-[720px] text-sm"><thead><tr><th>国家</th><th>95号汽油 (CNY/升)</th><th>柴油 (CNY/升)</th><th>数据日期</th><th>来源</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="mt-2 text-xs opacity-70">日本 / 韩国 / 印度 / 巴西等暂无免费稳定官方零售价源，保持待接入，不编造数据。<a href="https://www.globalpetrolprices.com/gasoline_prices/" class="underline">在 GlobalPetrolPrices 查看</a></p>${partial}`;
+}
+function renderCities() {
+  const box = document.getElementById('cityBox');
+  const ci = CITIES_DATA;
+  const sel = document.getElementById('cityProvince');
+  if (sel) sel.value = CITY_PROV;
+  if (!ci || ci.status === 'collecting' || ci.status === 'pending') {
+    box.innerHTML = emptyState('城市数据收集中', `非统一价省份：${(ci && ci.non_unified_provinces || []).join('、')} · ${(ci && ci.note) || ''}`, 'info');
+    return;
+  }
+  const prov = CITY_PROV || CURRENT;
+  const nonUnified = (ci.non_unified_provinces || []).includes(prov);
+  if (!nonUnified) {
+    const r = DATA && DATA.provinces.find(x => x.province === prov);
+    box.innerHTML = `<div class="alert alert-info"><span>${prov} 全省统一价</span><span class="text-xs opacity-80">${r ? `92 ${fmt(r.p92)} / 95 ${fmt(r.p95)} / 98 ${fmt(r.p98)} / 柴油 ${fmt(r.d0)} 元/升` : ''}</span></div>`;
+    return;
+  }
+  const rows = (ci.provinces && ci.provinces[prov]) || [];
+  if (!rows.length) {
+    box.innerHTML = emptyState('暂无该省城市数据', `${prov} 城市数据收集中或抓取失败，保留旧状态。`, 'info');
+    return;
+  }
+  const priceCell = (v, anomaly) => {
+    if (anomaly) return '<td class="text-xs text-warning">待核对</td>';
+    return `<td class="tabular-nums">${v == null ? '—' : fmt(v)}</td>`;
+  };
+  const body = rows.map(c => {
+    const an = c.status === 'anomaly';
+    return `<tr><td class="font-medium whitespace-nowrap">${c.city}</td>${priceCell(c.p92, an)}${priceCell(c.p95, an)}${priceCell(c.p98, an)}${priceCell(c.d0, an)}</tr>`;
+  }).join('');
+  box.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300"><table class="table w-full min-w-[560px] text-sm"><thead><tr><th>城市</th><th>92号汽油</th><th>95号汽油</th><th>98号汽油</th><th>0号柴油</th></tr></thead><tbody>${body}</tbody></table></div><p class="mt-2 text-xs opacity-70">城市价与省表同源（qiyoujiage.com），更新时间以省表为准；异常标“待核对”不展示价格，缺失显示 —。</p>`;
+}
 function perLiterRow(label, now, pred, delta, range) {
   const pct = now ? (delta / now * 100) : null;
   const pctHtml = pct == null ? '—' : `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
@@ -160,17 +215,22 @@ function renderForecast() {
     ${fc.floor_ceiling && fc.floor_ceiling.brent_latest_near_130 ? '<div class="alert alert-warning mt-3"><span>提示：Brent 最新价已接近 130 美元天花板附近（单项提示，不触发天花板；以一揽子均价为准）。</span></div>' : ''}
     <details class="collapse collapse-arrow border border-base-300 bg-base-100 mt-3"><summary class="collapse-title text-sm font-semibold">方法与来源（点击展开）</summary><div class="collapse-content text-xs leading-relaxed opacity-80 break-words"><p>${fc.method || ''}</p><p class="mt-1">${fc.derivation || ''}</p><p class="mt-1 break-all">${fc.disclaimer || ''} Brent：${fc.sources ? fc.sources.oil_brent : ''} · WTI：${fc.sources ? fc.sources.oil_wti : ''} · 汇率：${fc.sources ? fc.sources.fx : ''}</p></div></details>`;
 }
-window.onProvinceChange = () => { renderForecast(); renderPerLiter(); };
+window.onProvinceChange = () => { CITY_PROV = CURRENT; renderForecast(); renderPerLiter(); renderCities(); };
 async function load() {
   initShared();
   const [prices, fc, g, ci] = await Promise.all([j('/api/prices'), j('/api/forecast'), j('/api/global'), j('/api/cities')]);
-  DATA = prices; FORECAST = fc;
+  DATA = prices; FORECAST = fc; GLOBAL_DATA = g; CITIES_DATA = ci;
   CURRENT = getCurrentProvince();
   if (!DATA.provinces.find(r => r.province === CURRENT)) CURRENT = '上海';
+  CITY_PROV = CURRENT;
   populateProvinceSelect(document.getElementById('topProvince'), DATA.provinces.map(r => r.province));
-  initProvinceSwitcher(() => { renderForecast(); renderPerLiter(); });
-  document.getElementById('globalBox').innerHTML = g.status === 'pending' ? emptyState('待接入', g.note || '', 'info') : `<p class="text-sm">${JSON.stringify(g)}</p>`;
-  document.getElementById('cityBox').innerHTML = ci.status === 'collecting' ? emptyState('城市数据收集中', `非统一价省份：${(ci.non_unified_provinces || []).join('、')} · ${ci.note || ''}`, 'info') : `<p class="text-sm">${JSON.stringify(ci)}</p>`;
+  const citySel = document.getElementById('cityProvince');
+  if (citySel) {
+    citySel.innerHTML = DATA.provinces.map(r => `<option ${r.province === CITY_PROV ? 'selected' : ''}>${r.province}</option>`).join('');
+    citySel.onchange = () => { CITY_PROV = citySel.value; renderCities(); };
+  }
+  initProvinceSwitcher(() => { CITY_PROV = CURRENT; renderForecast(); renderPerLiter(); renderCities(); });
+  renderGlobal(); renderCities();
   renderForecast(); renderPerLiter();
 }
 registerSW();
