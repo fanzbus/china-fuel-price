@@ -211,17 +211,20 @@ function renderForecast() {
     box.innerHTML = emptyState('暂无预测数据', fc.note || '', 'warning');
     return;
   }
-  const dirColor = fc.direction === '上调' ? 'text-error' : fc.direction === '下调' ? 'text-success' : '';
-  const arrow = fc.direction === '上调' ? '↑' : fc.direction === '下调' ? '↓' : '—';
+  const est = Number(fc.estimated_adjustment_yuan_per_ton) || 0;
+  const dirColor = est > 0 ? 'text-error' : est < 0 ? 'text-success' : '';
+  const arrow = est > 0 ? '↑' : est < 0 ? '↓' : '—';
   const range = fc.estimated_adjustment_range || {};
+  const rangeColor = (range.low || 0) < 0 && (range.high || 0) < 0 ? 'text-success' : (range.low || 0) > 0 && (range.high || 0) > 0 ? 'text-error' : '';
+  const changeColor = (Number(fc.change_rate_pct) || 0) > 0 ? 'text-error' : (Number(fc.change_rate_pct) || 0) < 0 ? 'text-success' : '';
   box.innerHTML = `
     <div class="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <p class="${dirColor} text-lg font-bold leading-tight whitespace-nowrap">${arrow} 预计${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</p>
-        <p class="text-xs opacity-70 whitespace-nowrap">区间 ${range.low} ~ ${range.high} 元/吨</p>
+        <p class="${rangeColor} text-xs font-semibold whitespace-nowrap">区间 ${range.low} ~ ${range.high} 元/吨</p>
       </div>
       <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div><p class="text-xs opacity-60">一揽子原油变化率</p><p class="mt-0.5 text-sm font-semibold tabular-nums">${fc.change_rate_pct}%</p></div>
+        <div><p class="text-xs opacity-60">一揽子原油变化率</p><p class="mt-0.5 text-sm font-semibold tabular-nums ${changeColor}">${fc.change_rate_pct}%</p></div>
         <div><p class="text-xs opacity-60">Brent 近 10 日均值</p><p class="mt-0.5 text-sm font-semibold tabular-nums">${fc.brent ? fc.brent.avg_recent_10 : '—'} 美元/桶</p></div>
         <div><p class="text-xs opacity-60">WTI 近 10 日均值</p><p class="mt-0.5 text-sm font-semibold tabular-nums">${fc.wti ? fc.wti.avg_recent_10 : '—'} 美元/桶</p></div>
         <div><p class="text-xs opacity-60">汇率 USD/CNY</p><p class="mt-0.5 text-sm font-semibold tabular-nums">${fc.fx_usd_cny}</p></div>
