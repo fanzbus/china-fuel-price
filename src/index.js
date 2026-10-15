@@ -131,7 +131,7 @@ export default {
         return text("not found", "text/plain", 404);
       }
       // 静态资源白名单（CSS/JS/图标/数据/manifest/openapi 等）才走 ASSETS；未知路径 404，不用 SPA fallback
-      const STATIC_OK = /^\/(tailwind\.css|shared\.js|sw\.js|manifest\.webmanifest|icon-.*\.png|openapi\.yaml|index\.html|trend\.html|tools\.html|forecast\.html|api-docs\.html|data\/.*)$/;
+      const STATIC_OK = /^\/(tailwind\.css|shared\.js|sw\.js|manifest\.webmanifest|icon-.*\.png|logo\.png|favicon.*\.(png|ico)|openapi\.yaml|index\.html|trend\.html|tools\.html|forecast\.html|api-docs\.html|data\/.*)$/;
       if (STATIC_OK.test(url.pathname)) {
         const asset = await env.ASSETS.fetch(request);
         return asset;
