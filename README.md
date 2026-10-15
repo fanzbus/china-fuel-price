@@ -26,14 +26,26 @@
 | 功能 | 状态 | 原因 |
 |---|---|---|
 | 城市级价格（9 个非统一价省拆到市） | 收集中 | 源站城市页结构未验证通过，不编造城市数据 |
-| 预测（Brent/WTI + 汇率） | 暂无预测数据 | 上游公开源尚未在自动任务中验证通过；公式与来源见 `data/forecast.json` |
+| 预测（Brent/WTI + 汇率） | 已跑通（置信度低） | FRED Brent/WTI + ER-API 汇率；FRED 数据滞后数日、Brent/WTI 为官方篮子代理、系数 1.0 为估算假设；公式与来源见 `data/forecast.json` |
 | 全球主要国家对比 | 待接入 | 需要可验证的公开来源与日期标注 |
 | 发改委公告逐项对照（多源校验） | 待接入 | 对照数据未接入；不一致标红逻辑已实现 |
 
 ### 预测公式
 
 10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。
-上游：Stooq Brent (`brn.f`) 与 WTI (`cl.f`) 免费 CSV + ER-API USD/CNY（免费，无 Key）。任一上游取不到则 `status=no_data`。
+上游：FRED Brent (`DCOILBRENTEU`) + WTI (`DCOILWTICO`) 免费 CSV + ER-API USD/CNY（免费，无 Key）。Stooq 于 2026-10-15 实测被 JS 验证墙拦截，已改用 FRED。任一上游取不到则 `status=no_data`。预测页展示每升变动（现价 → 预测价 → 每升变动 + 幅度 + 区间），数据来自 `/api/forecast` 的 `delta_per_liter`，不硬编码。
+
+## 页面（History 真实多页，无 #）
+
+| 路径 | 文件 | 内容 |
+|---|---|---|
+| `/` | `public/index.html` | 今日油价（Hero + 查询/排序/油号 + 价格表 + 分页 + 排行） |
+| `/trend` | `public/trend.html` | 走势（历史走势图 + 调价日历 + 历史快照分页） |
+| `/tools` | `public/tools.html` | 工具（加油计算器 + 油 vs 电 + 车主账本） |
+| `/forecast` | `public/forecast.html` | 预测（国际油价预测 + 每升变动 + 全球 + 城市级） |
+| `/api-docs` | `public/api-docs.html` | API 文档（Playground + OpenAPI + Webhook 说明） |
+
+顶栏省份切换（`localStorage` key `china-fuel-current-province`，默认上海）跨页持久；公共逻辑在 `public/shared.js`（主题、省份、分页、空状态）。样式用 DaisyUI v5（Tailwind v4 `@plugin "daisyui"`，主题 light/dark，与 `.dark` class 同步）。
 
 ## API
 
