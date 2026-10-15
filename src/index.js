@@ -74,9 +74,21 @@ export default {
       if (url.pathname === "/api/global") return json(await loadJson(env, url, "global.json"));
       if (url.pathname === "/api/cities") {
         const cities = await loadJson(env, url, "cities.json");
+        // 新格式：{provinces: {四川: [{city, ...}]}}；旧格式：{cities: [{province, ...}]}，两者兼容
+        let list = [];
+        if (Array.isArray(cities.cities)) list = cities.cities;
+        else if (cities.provinces && typeof cities.provinces === "object") {
+          for (const [prov, arr] of Object.entries(cities.provinces)) {
+            for (const c of arr || []) list.push({ province: prov, ...c });
+          }
+        }
         const p = url.searchParams.get("province");
-        if (p) return json({ ...cities, cities: (cities.cities || []).filter((c) => c.province === p || c.province?.includes(p)) });
-        return json(cities);
+        let provinces = cities.provinces || null;
+        if (p) {
+          list = list.filter((c) => c.province === p || c.province?.includes(p));
+          if (provinces) provinces = { [p]: (provinces[p] || []) };
+        }
+        return json({ ...cities, provinces, count: list.length, cities: list });
       }
       if (url.pathname === "/api/history") {
         const raw = await loadText(env, url, "history.jsonl");
