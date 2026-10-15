@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>走势 · 今日油价</title>
+<meta name="description" content="历史走势、调价日历与历史快照。">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#FAFAF8">
+<link rel="stylesheet" href="/tailwind.css">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.setAttribute('data-theme','light');}}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+<script src="/shared.js" defer></script>
+<style>
+canvas{width:100%;height:auto;max-height:280px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:rgba(120,113,108,.35);border-radius:999px}
+</style></head>
+<body class="bg-base-100 font-sans antialiased">
+<header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/85 backdrop-blur">
+  <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+    <a href="/" class="flex items-center gap-3">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-content">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v3h-4"/><path d="M16 13l2.5 2.5"/><circle cx="9" cy="14" r="1.4"/></svg>
+      </span>
+      <span><span class="block text-[17px] font-bold leading-tight tracking-tight">今日油价</span><span class="block text-xs opacity-70">31 省汽油柴油价格</span></span>
+    </a>
+    <nav class="flex items-center gap-1 overflow-x-auto">
+      <a href="/" data-nav="/" class="btn btn-ghost btn-sm">今日油价</a>
+      <a href="/trend" data-nav="/trend" class="btn btn-ghost btn-sm">走势</a>
+      <a href="/tools" data-nav="/tools" class="btn btn-ghost btn-sm">工具</a>
+      <a href="/forecast" data-nav="/forecast" class="btn btn-ghost btn-sm">预测</a>
+      <a href="/api-docs" data-nav="/api-docs" class="btn btn-ghost btn-sm hidden sm:inline-flex">API 文档</a>
+      <label class="sr-only" for="topProvince">当前省份</label>
+      <select id="topProvince" data-province-select class="select select-bordered select-sm w-24"></select>
+      <button id="themeBtn" class="btn btn-outline btn-sm">暗色</button>
+    </nav>
+  </div>
+</header>
+<main class="mx-auto max-w-6xl space-y-4 px-4 pb-16 pt-4 sm:px-6 sm:pt-6">
+<section class="card bg-base-200 shadow-sm">
+  <div class="card-body">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="card-title text-[15px]">历史走势</h2>
+      <p class="hidden text-xs opacity-70 sm:block">每次调价自动追加</p>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <label class="sr-only" for="trendProvince">走势省份</label>
+      <select id="trendProvince" data-province-select class="select select-bordered"></select>
+      <label class="sr-only" for="trendFuel">走势油号</label>
+      <select id="trendFuel" class="select select-bordered"><option value="95">95号</option><option value="92">92号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
+      <button id="trendBtn" class="btn btn-primary">刷新</button>
+    </div>
+    <div class="mt-4 rounded-xl border border-base-300 bg-base-100 p-3">
+      <canvas id="chart" width="900" height="260"></canvas>
+    </div>
+    <p id="trendNote" class="mt-2 text-xs opacity-70"></p>
+    <div class="mt-5 border-t border-base-300 pt-4">
+      <h3 class="text-sm font-semibold">调价日历</h3>
+      <div id="calendar" class="alert alert-info mt-2"><span>下次调整见首页；历史调价记录随每次抓取自动追加，暂只有 2026-10-15 一个点。</span></div>
+    </div>
+    <div class="mt-5 border-t border-base-300 pt-4">
+      <h3 class="text-sm font-semibold">历史快照</h3>
+      <div id="historyList" class="mt-2 space-y-2"></div>
+      <div id="histPagination" class="mt-3 flex flex-wrap items-center justify-between gap-3"></div>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
+  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 2026-10-15 开始积累</span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+</footer>
+<script>
+let DATA = null, HISTORY = [], HIST_PAGE = 1;
+async function drawTrend() {
+  if (!DATA) return;
+  const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendFuel').value || '95';
+  const d = await j(`/api/trend?province=${encodeURIComponent(p)}&fuel=${f}`);
+  document.getElementById('trendNote').textContent = `${p} ${KEY[FUEL_CODE[f]]} · ${d.count} 个点 · 历史从 2026-10-15 开始积累`;
+  const c = document.getElementById('chart'), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+  if (!d.series.length) { ctx.fillStyle = '#94a3b8'; ctx.font = '14px sans-serif'; ctx.fillText('暂无数据', 20, 30); return; }
+  const vals = d.series.map(x => x.price), mn = Math.min(...vals), mx = Math.max(...vals);
+  ctx.strokeStyle = 'rgba(148,163,184,0.25)'; ctx.lineWidth = 1;
+  for (let g = 0; g <= 4; g++) { const Y = 30 + g * 50; ctx.beginPath(); ctx.moveTo(40, Y); ctx.lineTo(860, Y); ctx.stroke(); ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif'; ctx.fillText((mx - (mx - mn) * g / 4).toFixed(2), 4, Y + 4); }
+  ctx.beginPath(); d.series.forEach((x, i) => { const X = 40 + i * (800 / Math.max(1, d.series.length - 1)), Y = 230 - ((x.price - mn) / ((mx - mn) || 1)) * 200; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+  ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke();
+  d.series.forEach((x, i) => { const X = 40 + i * (800 / Math.max(1, d.series.length - 1)), Y = 230 - ((x.price - mn) / ((mx - mn) || 1)) * 200; ctx.beginPath(); ctx.arc(X, Y, 4, 0, 7); ctx.fillStyle = '#1d4ed8'; ctx.fill(); ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif'; ctx.fillText(x.price.toFixed(2), X - 10, Y - 10); });
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!HISTORY.length) {
+    list.innerHTML = '<div class="alert alert-info"><span>暂无历史快照。</span></div>';
+    renderPagination(0, 1, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(HISTORY.length / PAGE_SIZE));
+  if (HIST_PAGE > totalPages) HIST_PAGE = totalPages;
+  const pageRows = HISTORY.slice((HIST_PAGE - 1) * PAGE_SIZE, HIST_PAGE * PAGE_SIZE);
+  list.innerHTML = pageRows.map(s => {
+    const cur = (s.provinces || []).find(r => r.province === CURRENT);
+    return `<div class="card bg-base-100"><div class="card-body flex-row flex-wrap items-center justify-between gap-2 p-4 text-sm"><span class="font-medium">${(s.fetched_at || '').slice(0, 10)} · ${s.adjustment_status || ''}</span><span class="opacity-70">${CURRENT} 92 ${cur ? fmt(cur.p92) : '—'} / 95 ${cur ? fmt(cur.p95) : '—'} / 98 ${cur ? fmt(cur.p98) : '—'} / 柴油 ${cur ? fmt(cur.d0) : '—'}</span></div></div>`;
+  }).join('');
+  renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
+}
+window.onProvinceChange = () => { drawTrend(); renderHistory(); };
+async function load() {
+  initShared();
+  const [prices, hist] = await Promise.all([j('/api/prices'), j('/api/history')]);
+  DATA = prices; HISTORY = hist.snapshots || [];
+  CURRENT = getCurrentProvince();
+  if (!DATA.provinces.find(r => r.province === CURRENT)) CURRENT = '上海';
+  const provs = DATA.provinces.map(r => r.province);
+  populateProvinceSelect(document.getElementById('topProvince'), provs);
+  populateProvinceSelect(document.getElementById('trendProvince'), provs);
+  initProvinceSwitcher(() => { drawTrend(); renderHistory(); });
+  drawTrend(); renderHistory();
+}
+document.getElementById('trendBtn').onclick = drawTrend;
+document.getElementById('trendProvince').onchange = drawTrend;
+registerSW();
+load();
+</script></body></html>
