@@ -81,48 +81,138 @@ def parse_prices(html):
     return provinces, next_label, status
 
 
-def try_forecast():
-    """尝试 Stooq + ER-API，任何一步失败即返回 no_data（不编造）。"""
+def _fred_series(series_id):
+    """FRED 每日现货价 CSV：DATE,VALUE，空值（节假日）跳过。返回 [(date, price)]。"""
+    csv_text = fetch_text(
+        f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}&cosd=2026-08-01",
+        timeout=20)
+    rows = []
+    for line in csv_text.strip().splitlines()[1:]:
+        parts = line.split(",")
+        if len(parts) < 2:
+            continue
+        d, v = parts[0].strip(), parts[1].strip()
+        if v in ("", "."):
+            continue
+        try:
+            rows.append((d, float(v)))
+        except ValueError:
+            continue
+    return rows
+
+
+def try_forecast(provinces=None):
+    """按发改委规则估算下次调价。任一上游取不到即返回 no_data（不编造）。
+
+    上游：FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 日度现货价 + ER-API USD/CNY。
+    Stooq 已于 2026-10-15 实测被 JS 验证墙拦截，故改用 FRED（美联储公开 CSV，无 Key）。
+    注意：Brent/WTI 只是官方一揽子（Brent/Dubai/Minas 等）的免费代理，不是官方篮子。
+    当前为新周期初期（上次 2026-10-15 24:00 搁浅），用最近 20 个交易日滚动对比
+    （近 10 日均值 vs 再往前 10 日均值）作近似，越接近调价日越准，置信度低。
+
+    换算推导（写清系数，不拍脑袋）：
+    原油成本（元/吨）= 一揽子均价（USD/桶）× 7.33 桶/吨 × 汇率（CNY/USD）。
+    原油成本变化（元/吨）= 变化率 × 原油成本。精炼油调价 ≈ 原油成本变化 × 系数 1.0，
+    系数 1.0 为估算假设（忽略加工利润率扣减、税费、流通费用变化），并以 ±30% 给区间。
+    元/吨 → 元/升：汽油按 0.725 kg/L 约 1380 L/吨，柴油按 0.84 约 1190 L/吨。
+    校验：150 元/吨 /1380 ≈ 0.11 元/升，/1190 ≈ 0.13 元/升，与源站“150 元/吨≈0.11-0.14”量级一致。
+    """
     base = {"status": "no_data", "as_of": None, "change_rate_pct": None,
             "direction": None, "estimated_adjustment_yuan_per_ton": None,
             "confidence": None,
-            "formula": "10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。本字段为规则计算，非人工预测。",
-            "method": "取 Stooq Brent (brn.f) 与 WTI (cl.f) 最近 10 个工作日收盘价均值，与上一周期均值比较；汇率用 ER-API USD/CNY。任一上游取不到则 status=no_data，不编造。",
-            "note": "暂无预测数据：上游公开源尚未在自动任务中验证通过。",
+            "formula": "10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。40 美元地板 / 130 美元天花板。本字段为规则估算，非官方预测。",
+            "method": "FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。任一上游取不到则 status=no_data，不编造。",
+            "note": "暂无预测数据：上游公开源取不到或不足 20 个交易日。",
             "sources": {"fx": "https://open.er-api.com/v6/latest/USD",
-                       "oil": "https://stooq.com/q/d/l/?s=brn.f&i=d 与 cl.f"}}
+                       "oil_brent": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU",
+                       "oil_wti": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILWTICO",
+                       "oil_note": "Stooq 于 2026-10-15 实测被 JS 验证墙拦截，已改用 FRED。"},
+            "disclaimer": "预测仅供参考，以国家发改委官方通知为准。Brent/WTI 为官方一揽子的免费代理，非官方篮子；系数 1.0 与 ±30% 区间均为估算假设。"}
     try:
-        def stooq(symbol):
-            csv = fetch_text(f"https://stooq.com/q/d/l/?s={symbol}&i=d", timeout=15)
-            rows = []
-            for line in csv.strip().splitlines()[1:]:
-                parts = line.split(",")
-                if len(parts) >= 5:
-                    rows.append(float(parts[4]))
-            return rows
-        brent = stooq("brn.f")
-        wti = stooq("cl.f")
+        brent = _fred_series("DCOILBRENTEU")
+        wti = _fred_series("DCOILWTICO")
         if len(brent) < 20 or len(wti) < 20:
             return base
-        # 最近 10 日均值 vs 再往前 10 日均值（近似上一周期）
-        def change(rows):
-            recent = sum(rows[-10:]) / 10
-            prev = sum(rows[-20:-10]) / 10
-            return (recent - prev) / prev * 100 if prev else None
-        c = (change(brent) + change(wti)) / 2
         fx = json.loads(fetch_text("https://open.er-api.com/v6/latest/USD", timeout=15))
         usd_cny = fx.get("rates", {}).get("CNY")
-        if c is None or not usd_cny:
+        if not usd_cny:
             return base
-        # 粗略换算：变化率 -> 元/吨量级（仅规则示意，标注为估算）
-        est = round(c * 100, 0)  # 1% 约 100 元/吨量级估算
+
+        def _avg(rows, sl):
+            part = rows[sl]
+            return sum(p for _, p in part) / len(part)
+        b_recent, b_prev = _avg(brent, slice(-10, None)), _avg(brent, slice(-20, -10))
+        w_recent, w_prev = _avg(wti, slice(-10, None)), _avg(wti, slice(-20, -10))
+        b_change = (b_recent - b_prev) / b_prev * 100
+        w_change = (w_recent - w_prev) / w_prev * 100
+        c = (b_change + w_change) / 2
+        basket = (b_recent + w_recent) / 2  # USD/桶
+        crude_cost_per_ton = basket * 7.33 * usd_cny  # 元/吨
+        est = round(c / 100 * crude_cost_per_ton, 0)  # 中心值
+        low, high = min(round(est * 0.7, 0), round(est * 1.3, 0)), max(round(est * 0.7, 0), round(est * 1.3, 0))
         direction = "上调" if est >= 50 else ("下调" if est <= -50 else "搁浅")
-        base.update({"status": "estimated", "as_of": datetime.now(CST).isoformat(),
-                     "change_rate_pct": round(c, 2), "direction": direction,
-                     "estimated_adjustment_yuan_per_ton": est, "confidence": "低（仅原油现货均值近似，正式结果以发改委为准）",
-                     "usd_cny": usd_cny,
-                     "note": "规则估算，非官方预测；正式结果以国家发改委通知为准。"})
-        return base
+        # 地板/天花板：以一揽子代理均价为准，同时标注 Brent 单项是否接近上限
+        floor_hit = basket <= 40
+        ceiling_hit = basket >= 130
+        brent_near_ceiling = brent[-1][1] >= 120  # Brent 最新价接近 130，单独提示
+        delta_gas = round(est / 1380, 3)
+        delta_diesel = round(est / 1190, 3)
+        delta = {"p92": delta_gas, "p95": delta_gas, "p98": delta_gas, "d0": delta_diesel}
+        predicted = []
+        if provinces:
+            for r in provinces:
+                predicted.append({
+                    "province": r["province"],
+                    "p92": round(r["p92"] + delta_gas, 2),
+                    "p95": round(r["p95"] + delta_gas, 2),
+                    "p98": round(r["p98"] + delta_gas, 2),
+                    "d0": round(r["d0"] + delta_diesel, 2),
+                })
+        def _navg(key):
+            if not provinces:
+                return None
+            return round(sum(r[key] for r in provinces) / len(provinces) + delta[key], 3)
+        as_of = min(brent[-1][0], wti[-1][0])  # FRED 滞后，as_of 取数据最后日期，非今天
+        out = dict(base)
+        out.update({
+            "status": "estimated",
+            "as_of": as_of,
+            "as_of_note": "FRED 数据最后日期（滞后于今天），非抓取日期。",
+            "brent": {"latest": brent[-1][1], "latest_date": brent[-1][0],
+                      "avg_recent_10": round(b_recent, 2), "recent_range": [brent[-10][0], brent[-1][0]],
+                      "avg_prev_10": round(b_prev, 2), "prev_range": [brent[-20][0], brent[-11][0]],
+                      "change_rate_pct": round(b_change, 2)},
+            "wti": {"latest": wti[-1][1], "latest_date": wti[-1][0],
+                    "avg_recent_10": round(w_recent, 2), "recent_range": [wti[-10][0], wti[-1][0]],
+                    "avg_prev_10": round(w_prev, 2), "prev_range": [wti[-20][0], wti[-11][0]],
+                    "change_rate_pct": round(w_change, 2)},
+            "fx_usd_cny": usd_cny,
+            "fx_updated": fx.get("time_last_update_utc"),
+            "basket_usd_per_bbl": round(basket, 2),
+            "crude_cost_cny_per_ton": round(crude_cost_per_ton, 0),
+            "change_rate_pct": round(c, 2),
+            "direction": direction,
+            "estimated_adjustment_yuan_per_ton": est,
+            "estimated_adjustment_range": {"low": low, "high": high},
+            "delta_per_liter": delta,
+            "delta_per_liter_range": {
+                "p92": [round(min(low, high) / 1380, 3), round(max(low, high) / 1380, 3)],
+                "p95": [round(min(low, high) / 1380, 3), round(max(low, high) / 1380, 3)],
+                "p98": [round(min(low, high) / 1380, 3), round(max(low, high) / 1380, 3)],
+                "d0": [round(min(low, high) / 1190, 3), round(max(low, high) / 1190, 3)]},
+            "predicted_national_avg": {"p92": _navg("p92"), "p95": _navg("p95"),
+                                       "p98": _navg("p98"), "d0": _navg("d0")},
+            "predicted_prices": predicted,
+            "confidence": "低（新周期初期滚动近似 + 代理篮子 + 系数 1.0 假设 + FRED 滞后，越接近调价日越准）",
+            "floor_ceiling": {"basket_vs_40": floor_hit, "basket_vs_130": ceiling_hit,
+                              "brent_latest_near_130": brent_near_ceiling,
+                              "note": "地板 40 / 天花板 130 按一揽子均价判断；Brent 单项接近 130 仅作提示，不触发天花板。"},
+            "derivation": ("原油成本=一揽子均价(USD/桶)×7.33桶/吨×汇率；"
+                           "原油成本变化=变化率×原油成本；精炼油调价≈原油成本变化×1.0（估算假设）±30% 区间；"
+                           "元/吨→元/升：汽油÷1380，柴油÷1190。"),
+            "note": "规则估算，非官方预测；正式结果以国家发改委通知为准。",
+        })
+        return out
     except Exception:  # noqa: BLE001
         return base
 
@@ -195,7 +285,10 @@ def main():
                  "history_start": meta.get("history_start", "2026-10-15")})
     (meta_path).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    forecast = try_forecast()
+    try:
+        forecast = try_forecast(provinces)
+    except Exception:  # noqa: BLE001 — 预测失败不影响价格抓取
+        forecast = {"status": "no_data", "note": "预测计算失败，仍保留价格数据。"}
     (DATA / "forecast.json").write_text(json.dumps(forecast, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # 同步到 public/data（Worker 通过 ASSETS 提供）
