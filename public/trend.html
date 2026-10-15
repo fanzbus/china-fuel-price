@@ -88,7 +88,8 @@ async function drawTrend() {
 }
 function renderHistory() {
   const list = document.getElementById('historyList');
-  document.getElementById('histProvince').textContent = CURRENT;
+  const HP = document.getElementById('trendProvince')?.value || CURRENT;
+  document.getElementById('histProvince').textContent = HP;
   if (!HISTORY.length) {
     list.innerHTML = '<div class="alert alert-info"><span>暂无历史快照。</span></div>';
     renderPagination(0, 1, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
@@ -104,7 +105,7 @@ function renderHistory() {
     return `<td class="tabular-nums whitespace-nowrap"><span class="font-semibold">${fmt(price)}</span>${delta == null ? '' : ` <span class="text-[11px] font-normal ${cls}">${txt}</span>`}</td>`;
   };
   const rowsHtml = pageRows.map(s => {
-    const cur = (s.provinces || []).find(r => r.province === CURRENT);
+    const cur = (s.provinces || []).find(r => r.province === HP);
     const d = s.delta || {};
     const status = (s.adjustment_status || '').includes('上调') ? '上调' : (s.adjustment_status || '').includes('下调') ? '下调' : (s.adjustment_status || '').includes('搁浅') ? '搁浅' : (s.adjustment_status || '');
     const statusCls = status === '上调' ? 'badge-error badge-soft' : status === '下调' ? 'badge-success badge-soft' : 'badge-ghost';
@@ -113,7 +114,7 @@ function renderHistory() {
   list.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300 bg-base-100"><table class="table w-full min-w-[680px] text-sm"><thead><tr><th class="whitespace-nowrap">日期</th><th class="whitespace-nowrap">状态</th><th class="whitespace-nowrap">92号汽油</th><th class="whitespace-nowrap">95号汽油</th><th class="whitespace-nowrap">98号汽油</th><th class="whitespace-nowrap">0号柴油</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
   renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
 }
-window.onProvinceChange = () => { drawTrend(); renderHistory(); };
+window.onProvinceChange = () => { const tp = document.getElementById('trendProvince'); if (tp) tp.value = CURRENT; drawTrend(); renderHistory(); };
 async function load() {
   initShared();
   const [prices, hist] = await Promise.all([j('/api/prices'), j('/api/history')]);
@@ -126,8 +127,8 @@ async function load() {
   initProvinceSwitcher(() => { drawTrend(); renderHistory(); });
   drawTrend(); renderHistory();
 }
-document.getElementById('trendBtn').onclick = drawTrend;
-document.getElementById('trendProvince').onchange = drawTrend;
+document.getElementById('trendBtn').onclick = () => { drawTrend(); renderHistory(); };
+document.getElementById('trendProvince').onchange = () => { drawTrend(); renderHistory(); };
 registerSW();
 load();
 </script></body></html>
