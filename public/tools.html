@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工具 · 今日油价</title>
+<meta name="description" content="加油计算器、油 vs 电对比、车主账本。">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#FAFAF8">
+<link rel="stylesheet" href="/tailwind.css">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.setAttribute('data-theme','light');}}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+<script src="/shared.js" defer></script>
+<style>
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:rgba(120,113,108,.35);border-radius:999px}
+</style></head>
+<body class="bg-base-100 font-sans antialiased">
+<header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/85 backdrop-blur">
+  <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+    <a href="/" class="flex items-center gap-3">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-content">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v3h-4"/><path d="M16 13l2.5 2.5"/><circle cx="9" cy="14" r="1.4"/></svg>
+      </span>
+      <span><span class="block text-[17px] font-bold leading-tight tracking-tight">今日油价</span><span class="block text-xs opacity-70">31 省汽油柴油价格</span></span>
+    </a>
+    <nav class="flex items-center gap-1 overflow-x-auto">
+      <a href="/" data-nav="/" class="btn btn-ghost btn-sm">今日油价</a>
+      <a href="/trend" data-nav="/trend" class="btn btn-ghost btn-sm">走势</a>
+      <a href="/tools" data-nav="/tools" class="btn btn-ghost btn-sm">工具</a>
+      <a href="/forecast" data-nav="/forecast" class="btn btn-ghost btn-sm">预测</a>
+      <a href="/api-docs" data-nav="/api-docs" class="btn btn-ghost btn-sm hidden sm:inline-flex">API 文档</a>
+      <label class="sr-only" for="topProvince">当前省份</label>
+      <select id="topProvince" data-province-select class="select select-bordered select-sm w-24"></select>
+      <button id="themeBtn" class="btn btn-outline btn-sm">暗色</button>
+    </nav>
+  </div>
+</header>
+<main class="mx-auto max-w-6xl space-y-4 px-4 pb-16 pt-4 sm:px-6 sm:pt-6">
+<section class="card bg-base-200 shadow-sm">
+  <div class="card-body">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="card-title text-[15px]">加油计算器</h2>
+      <p class="hidden text-xs opacity-70 sm:block">按所选省份当前价计算</p>
+    </div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">省份</span><select id="calcProvince" data-province-select class="select select-bordered"></select></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">油号</span><select id="calcFuel" class="select select-bordered"><option value="92">92号</option><option value="95" selected>95号</option><option value="98">98号</option><option value="0">0号柴油</option></select></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">升数</span><input id="liters" type="number" value="50" min="0" step="0.1" class="input input-bordered tabular-nums"></label>
+      <div class="flex items-end"><button id="calcBtn" class="btn btn-primary w-full">计算</button></div>
+    </div>
+    <div class="mt-4 flex flex-wrap items-baseline gap-2">
+      <span id="calcOut" class="text-3xl font-bold tracking-tight tabular-nums"></span>
+      <span id="calcDetail" class="text-sm opacity-70"></span>
+    </div>
+  </div>
+</section>
+<section class="card bg-base-200 shadow-sm">
+  <div class="card-body">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="card-title text-[15px]">油 vs 电：每公里成本</h2>
+      <p class="hidden text-xs opacity-70 sm:block">默认值均为假设，可改</p>
+    </div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">油耗 L / 100km</span><input id="fuelUse" type="number" value="7.5" step="0.1" class="input input-bordered tabular-nums"></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">电耗 kWh / 100km</span><input id="elecUse" type="number" value="15" step="0.1" class="input input-bordered tabular-nums"></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">电价 元 / kWh</span><input id="elecPrice" type="number" value="0.6" step="0.05" class="input input-bordered tabular-nums"></label>
+      <div class="flex items-end"><button id="compareBtn" class="btn btn-primary w-full">对比</button></div>
+    </div>
+    <div id="compareOut" class="mt-4"></div>
+  </div>
+</section>
+<section class="card bg-base-200 shadow-sm">
+  <div class="card-body">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="card-title text-[15px]">车主账本</h2>
+      <p class="hidden text-xs opacity-70 sm:block">仅本地，不上传</p>
+    </div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">日期</span><input id="lDate" type="date" class="input input-bordered"></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">升数</span><input id="lLiters" type="number" placeholder="升数" step="0.01" class="input input-bordered tabular-nums"></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">金额（元）</span><input id="lAmount" type="number" placeholder="金额（元）" step="0.01" class="input input-bordered tabular-nums"></label>
+      <label class="flex flex-col gap-1"><span class="text-xs opacity-70">里程表 km</span><input id="lKm" type="number" placeholder="里程表 km" step="1" class="input input-bordered tabular-nums"></label>
+      <div class="flex items-end gap-2"><button id="lAdd" class="btn btn-primary flex-1">记一笔</button><button id="lClear" class="btn btn-outline">清空</button></div>
+    </div>
+    <div id="lOut" class="mt-4 text-sm font-medium"></div>
+    <div id="lList" class="mt-2 space-y-1 text-sm"></div>
+  </div>
+</section>
+</main>
+<footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
+  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 2026-10-15 开始积累</span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+</footer>
+<script>
+let DATA = null;
+function doCalc() {
+  if (!DATA) return;
+  const p = document.getElementById('calcProvince').value, f = document.getElementById('calcFuel').value, L = +document.getElementById('liters').value || 0;
+  const row = DATA.provinces.find(r => r.province === p); const price = row[FUEL_CODE[f]];
+  document.getElementById('calcOut').textContent = `¥ ${(price * L).toFixed(2)}`;
+  document.getElementById('calcDetail').textContent = `${p} ${f}号 ${price.toFixed(2)} 元/升 × ${L} 升`;
+}
+function doCompare() {
+  if (!DATA) return;
+  const p = CURRENT;
+  const row = DATA.provinces.find(r => r.province === p) || DATA.provinces[0];
+  const fu = +document.getElementById('fuelUse').value || 7.5, eu = +document.getElementById('elecUse').value || 15, ep = +document.getElementById('elecPrice').value || 0.6;
+  const oil = row.p95 * fu / 100, ele = eu * ep / 100;
+  document.getElementById('compareOut').innerHTML = `<div class="stats stats-vertical w-full shadow-sm sm:stats-horizontal"><div class="stat"><div class="stat-title text-xs">油车 · ${p} 95# ${row.p95.toFixed(2)} 元/升</div><div class="stat-value text-2xl tabular-nums">${oil.toFixed(2)}</div><div class="stat-desc">元 / km · 假设油耗 ${fu} L/100km</div></div><div class="stat"><div class="stat-title text-xs">电车</div><div class="stat-value text-2xl tabular-nums">${ele.toFixed(2)}</div><div class="stat-desc">元 / km · 假设电耗 ${eu} kWh/100km · 电价 ${ep} 元/kWh</div></div><div class="stat"><div class="stat-title text-xs">差值（油车 − 电车）</div><div class="stat-value text-2xl tabular-nums">${(oil - ele).toFixed(2)}</div><div class="stat-desc">元 / km</div></div></div>`;
+}
+function renderLedger() {
+  const arr = JSON.parse(localStorage.getItem('china-fuel-ledger') || '[]');
+  let html = ''; let total = 0, liters = 0; const byMonth = {};
+  arr.forEach((x, i) => {
+    total += x.amount; liters += x.liters;
+    const m = (x.date || '').slice(0, 7); byMonth[m] = (byMonth[m] || 0) + x.amount;
+    let cons = '—'; if (i > 0 && x.km > arr[i - 1].km) cons = ((x.liters / (x.km - arr[i - 1].km)) * 100).toFixed(2) + ' L/100km';
+    html += `<div class="flex items-center justify-between gap-3 border-b border-base-300 py-2 text-sm last:border-0"><span>${x.date} · ${x.liters}L · ¥${x.amount}</span><span class="opacity-70">里程 ${x.km} · 油耗 ${cons}</span></div>`;
+  });
+  if (!arr.length) html = '<div class="alert alert-info"><span>暂无记录，记第一笔试试。</span></div>';
+  document.getElementById('lOut').innerHTML = `共 ${arr.length} 笔 · 合计 ${liters.toFixed(1)} 升 · ¥${total.toFixed(2)} · 月均：${Object.entries(byMonth).map(([k, v]) => `${k} ¥${v.toFixed(0)}`).join('，') || '—'}`;
+  document.getElementById('lList').innerHTML = html;
+}
+window.onProvinceChange = () => { doCalc(); doCompare(); };
+async function load() {
+  initShared();
+  DATA = await j('/api/prices');
+  CURRENT = getCurrentProvince();
+  if (!DATA.provinces.find(r => r.province === CURRENT)) CURRENT = '上海';
+  const provs = DATA.provinces.map(r => r.province);
+  populateProvinceSelect(document.getElementById('topProvince'), provs);
+  populateProvinceSelect(document.getElementById('calcProvince'), provs);
+  initProvinceSwitcher(() => { doCalc(); doCompare(); });
+  doCalc(); doCompare(); renderLedger();
+}
+document.getElementById('calcBtn').onclick = doCalc;
+document.getElementById('compareBtn').onclick = doCompare;
+document.getElementById('lAdd').onclick = () => { const arr = JSON.parse(localStorage.getItem('china-fuel-ledger') || '[]'); arr.push({ date: document.getElementById('lDate').value || new Date().toISOString().slice(0, 10), liters: +document.getElementById('lLiters').value || 0, amount: +document.getElementById('lAmount').value || 0, km: +document.getElementById('lKm').value || 0 }); localStorage.setItem('china-fuel-ledger', JSON.stringify(arr)); renderLedger(); };
+document.getElementById('lClear').onclick = () => { localStorage.removeItem('china-fuel-ledger'); renderLedger(); };
+registerSW();
+load();
+</script></body></html>
