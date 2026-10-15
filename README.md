@@ -69,11 +69,11 @@ curl localhost:8787/health
 
 GitHub Actions（`.github/workflows/update-prices.yml`）：每天 02:00 UTC + 可手动触发，跑 `scripts/scrape.py` 抓首页解析 → 写 `data/prices.json`、`data/history.jsonl`（有变动才追加）、`data/meta.json`，提交回仓库。`scrape.py` 带 UA 标识、失败重试 2 次、解析失败则不写脏数据直接失败退出。不要高频爬。
 
-## 部署（需手动建仓后执行，本仓库不含部署步骤）
+## 部署（已上线）
 
-1. GitHub 新建公开仓库 `fanzbus/china-fuel-price`，把本目录内容 push 上去。
-2. Cloudflare：`npx wrangler login && npx wrangler deploy`，或在 Dashboard 用 Workers + GitHub 自动部署。
-3. 把 README / 页面里的 `YOUR-WORKERS-DEV` 换成实际域名。
+- 页面：https://china-fuel-price.fansys.workers.dev/
+- 仓库：https://github.com/fanzbus/china-fuel-price
+- 部署：`npx wrangler deploy`（Cloudflare Workers，静态 + API 同服务）。改代码后重新 deploy 即可；数据由 GitHub Actions 每天 02:00 UTC 自动更新。
 
 ## 许可证
 
