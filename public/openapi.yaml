@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: 今日油价 API
+  version: 1.0.0
+  description: |
+    31 省汽油柴油价格，免 Key，CORS 全开。数据来源 qiyoujiage.com，仅取价格数字与调价时间。
+    历史从 2026-10-15 开始积累。未验证数据一律 no_data / pending，不编造。
+servers:
+  - url: https://YOUR-WORKERS-DEV
+    description: 部署后替换为实际域名
+paths:
+  /api/prices:
+    get:
+      summary: 全部 / 按省 / 按油号查价
+      parameters:
+        - {name: province, in: query, schema: {type: string}, example: 上海}
+        - {name: fuel, in: query, schema: {type: string, enum: ["92","95","98","0"]}, example: "95"}
+      responses: {"200": {description: OK}}
+  /api/history:
+    get: {summary: 历史快照（jsonl 派生）, responses: {"200": {description: OK}}}
+  /api/trend:
+    get:
+      summary: 某省某油号走势
+      parameters:
+        - {name: province, in: query, required: true, schema: {type: string}}
+        - {name: fuel, in: query, schema: {type: string, enum: ["92","95","98","0"]}}
+      responses: {"200": {description: OK}}
+  /api/meta:
+    get: {summary: 元数据（下次调整、来源、校验状态）, responses: {"200": {description: OK}}}
+  /api/cities:
+    get: {summary: 城市级（收集中）, responses: {"200": {description: OK}}}
+  /api/forecast:
+    get: {summary: 下次调价预测（no_data 时不编造）, responses: {"200": {description: OK}}}
+  /api/global:
+    get: {summary: 全球对比（待接入）, responses: {"200": {description: OK}}}
+  /api/export.csv:
+    get: {summary: CSV 导出, responses: {"200": {description: OK}}}
+  /health:
+    get: {summary: 健康检查, responses: {"200": {description: OK}}}
+  /rss.xml:
+    get: {summary: RSS, responses: {"200": {description: OK}}}
