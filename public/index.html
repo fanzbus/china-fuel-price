@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>今日油价 · 31 省汽油柴油价格</title>
+<meta name="description" content="31 省 92/95/98 号汽油与 0 号柴油价格，历史走势、调价预测、加油计算器与公开 API。">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--brand:#2563eb;--up:#dc2626;--down:#059669}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--line:#334155;--brand:#60a5fa}}
+[data-theme="dark"]{--bg:#0f172a;--card:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--line:#334155;--brand:#60a5fa}
+[data-theme="light"]{--bg:#f6f7f9;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--brand:#2563eb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+header{max-width:1100px;margin:0 auto;padding:20px 16px 8px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+h1{margin:0;font-size:28px}h2{font-size:19px;margin:28px 0 10px}.sub{color:var(--muted);font-size:14px}
+main{max-width:1100px;margin:0 auto;padding:0 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.big{font-size:28px;font-weight:800}.muted{color:var(--muted);font-size:13px}.pill{display:inline-block;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px}
+input,select,button{font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text)}
+button{background:var(--brand);color:#fff;border:0;cursor:pointer}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}.tabs button{background:transparent;color:var(--text);border:1px solid var(--line)}.tabs button.on{background:var(--brand);color:#fff}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-size:13px;cursor:pointer}
+.badge{font-size:12px;padding:2px 8px;border-radius:999px;background:#fef3c7}.warn{color:#b45309}.red{color:var(--up)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grow{flex:1;min-width:180px}
+pre{overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:10px;font-size:13px}
+footer{max-width:1100px;margin:0 auto;padding:20px 16px;color:var(--muted);font-size:13px}
+canvas{width:100%;max-height:260px}
+@media(max-width:640px){h1{font-size:22px}.big{font-size:22px}table{font-size:14px}}
+</style></head>
+<body>
+<header><div><h1>⛽ 今日油价</h1><div class="sub" id="metaLine">加载中…</div><div class="muted" id="countdown"></div></div>
+<div class="row"><button class="ghost" id="themeBtn">🌙 暗色</button><a href="#api"><button class="ghost">API 文档</button></a></div></header>
+<main>
+<section class="card"><div class="row"><span class="pill" id="adjustPill">—</span><span id="interpretation" class="muted"></span></div>
+<div class="grid" id="avgGrid" style="margin-top:12px"></div>
+<div class="muted" style="margin-top:8px">历史从 2026-10-15 开始积累，只有一个点就只画一个点。</div></section>
+
+<section class="card"><h2 style="margin-top:0">🔍 查询与排行</h2>
+<div class="row"><input id="q" class="grow" placeholder="搜索省份，如 上海 / 广东"><select id="sortSel"><option value="p92">按 92 排序</option><option value="p95">按 95 排序</option><option value="p98">按 98 排序</option><option value="d0">按 0号柴油排序</option></select>
+<button class="ghost" id="sortDir">↓ 降序</button></div>
+<div class="tabs" style="margin-top:12px" id="fuelTabs"></div>
+<div style="overflow:auto;margin-top:8px"><table><thead><tr><th>省份</th><th>92号汽油</th><th>95号汽油</th><th>98号汽油</th><th>0号柴油</th><th>与上海 95 价差</th></tr></thead><tbody id="tbody"></tbody></table></div>
+<div class="row" style="margin-top:12px"><div class="card" style="flex:1"><b>最贵 Top 3</b><div id="topExp"></div></div><div class="card" style="flex:1"><b>最便宜 Top 3</b><div id="topCheap"></div></div></div></section>
+
+<section class="card"><h2 style="margin-top:0">📈 历史走势</h2>
+<div class="row"><select id="trendProvince"></select><select id="trendFuel"><option value="95">95号</option><option value="92">92号</option><option value="98">98号</option><option value="0">0号柴油</option></select><button id="trendBtn">刷新</button></div>
+<canvas id="chart" width="900" height="260"></canvas><div class="muted" id="trendNote"></div>
+<h2>🗓️ 调价日历</h2><div id="calendar" class="muted">下次调整见顶部；历史调价记录随每次抓取自动追加，暂只有 2026-10-15 一个点。</div></section>
+
+<section class="card"><h2 style="margin-top:0">🧮 加油计算器</h2>
+<div class="row"><select id="calcProvince"></select><select id="calcFuel"><option value="92">92号</option><option value="95" selected>95号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
+<label>升数 <input id="liters" type="number" value="50" min="0" step="0.1"></label><button id="calcBtn">计算</button></div>
+<div id="calcOut" class="big" style="margin-top:10px"></div><div class="muted" id="calcDetail"></div></section>
+
+<section class="card"><h2 style="margin-top:0">⚡ 油 vs 电：每公里成本 <span class="muted">（默认值均为假设，可改）</span></h2>
+<div class="row"><label>油耗 L/100km <input id="fuelUse" type="number" value="7.5" step="0.1"></label><label>电耗 kWh/100km <input id="elecUse" type="number" value="15" step="0.1"></label><label>电价 元/kWh <input id="elecPrice" type="number" value="0.6" step="0.05"></label><button id="compareBtn">对比</button></div>
+<div id="compareOut" style="margin-top:10px"></div></section>
+
+<section class="card"><h2 style="margin-top:0">🔮 下次调价预测</h2><div id="forecastBox">加载中…</div>
+<div class="muted">公式：10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。来源：Stooq Brent/WTI + ER-API USD/CNY。任一上游取不到则显示“暂无预测数据”，不编造。</div></section>
+
+<section class="card"><h2 style="margin-top:0">🌍 全球主要国家对比</h2><div id="globalBox">加载中…</div></section>
+<section class="card"><h2 style="margin-top:0">🏙️ 城市级价格</h2><div id="cityBox">加载中…</div></section>
+
+<section class="card"><h2 style="margin-top:0">🚗 车主账本（仅本地，不上传）</h2>
+<div class="row"><input id="lDate" type="date"><input id="lLiters" type="number" placeholder="升数" step="0.01"><input id="lAmount" type="number" placeholder="金额（元）" step="0.01"><input id="lKm" type="number" placeholder="里程表 km" step="1"><button id="lAdd">记一笔</button><button class="ghost" id="lClear">清空</button></div>
+<div id="lOut" style="margin-top:10px"></div><div id="lList" class="muted"></div></section>
+
+<section class="card" id="api"><h2 style="margin-top:0">🧑‍💻 开发者 API（免 Key，CORS 全开）</h2>
+<p class="muted">Base URL 为当前域名。示例：</p>
+<pre>curl https://YOUR-WORKERS-DEV/api/prices?province=上海
+curl https://YOUR-WORKERS-DEV/api/prices?fuel=95
+curl https://YOUR-WORKERS-DEV/api/history
+curl https://YOUR-WORKERS-DEV/api/trend?province=上海&amp;fuel=95
+curl https://YOUR-WORKERS-DEV/api/meta
+curl https://YOUR-WORKERS-DEV/api/forecast
+curl https://YOUR-WORKERS-DEV/api/export.csv</pre>
+<div class="row"><a href="/openapi.yaml"><button class="ghost">OpenAPI YAML</button></a><a href="/api/export.csv"><button class="ghost">下载 CSV</button></a><a href="/rss.xml"><button class="ghost">RSS</button></a><a href="/health"><button class="ghost">/health</button></a></div>
+<p class="muted">Webhook：订阅调价变更可轮询 <code>/api/meta</code> 的 <code>fetched_at</code>，或订阅 <code>/rss.xml</code>。暂不提供推送服务。</p>
+<h3>在线 Playground</h3><div class="row"><select id="pgPath"><option>/api/prices</option><option>/api/prices?province=上海</option><option>/api/meta</option><option>/api/forecast</option><option>/api/history</option><option>/api/trend?province=上海&fuel=95</option><option>/health</option></select><button id="pgBtn">请求</button></div><pre id="pgOut">点“请求”查看返回</pre></section>
+</main>
+<footer>数据来源：<a href="http://www.qiyoujiage.com/">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 2026-10-15 开始积累 · <a href="/health">状态</a> · <a href="https://github.com/fanzbus/china-fuel-price">GitHub</a></footer>
+<script>
+let DATA=null, FUEL='p95', DESC=true;
+const KEY={p92:'92号汽油',p95:'95号汽油',p98:'98号汽油',d0:'0号柴油'};
+const fuelKeys=['p92','p95','p98','d0'];
+async function j(u){const r=await fetch(u);return r.json()}
+function fmt(n){return n==null?'—':n.toFixed(2)}
+async function load(){
+  DATA=await j('/api/prices'); const meta=await j('/api/meta');
+  document.getElementById('metaLine').textContent=`更新于 ${DATA.fetched_at} · 来源 qiyoujiage.com · 单位 元/升`;
+  document.getElementById('adjustPill').textContent=`下次调整：${DATA.next_adjustment_label||'—'} · ${DATA.adjustment_status||''}`;
+  document.getElementById('interpretation').textContent=DATA.interpretation||'';
+  const avg=DATA.national_avg||{}; document.getElementById('avgGrid').innerHTML=fuelKeys.map(k=>`<div><div class="muted">全国均价 · ${KEY[k]}</div><div class="big">${fmt(avg[k])}</div></div>`).join('');
+  const t=new Date(DATA.next_adjustment); const now=new Date();
+  document.getElementById('countdown').textContent = DATA.next_adjustment ? `距离下次调整约 ${Math.max(0,Math.round((t-now)/3600000))} 小时` : '';
+  const tabs=document.getElementById('fuelTabs'); tabs.innerHTML=fuelKeys.map(k=>`<button data-k="${k}" class="${k===FUEL?'on':''}">${KEY[k]}</button>`).join('');
+  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{FUEL=b.dataset.k;load();});
+  renderTable();
+  const provs=DATA.provinces.map(r=>r.province);
+  for(const id of ['trendProvince','calcProvince']){const s=document.getElementById(id); if(!s.dataset.done){s.innerHTML=provs.map(p=>`<option ${p==='上海'?'selected':''}>${p}</option>`).join(''); s.dataset.done=1;}}
+  renderRank(); drawTrend();
+}
+function renderTable(){
+  const q=(document.getElementById('q').value||'').trim();
+  let rows=DATA.provinces.filter(r=>!q||r.province.includes(q));
+  rows=[...rows].sort((a,b)=>DESC?b[FUEL]-a[FUEL]:a[FUEL]-b[FUEL]);
+  const sh=DATA.provinces.find(r=>r.province==='上海');
+  document.getElementById('tbody').innerHTML=rows.map(r=>`<tr><td>${r.province}</td><td>${fmt(r.p92)}</td><td>${fmt(r.p95)}</td><td>${fmt(r.p98)}</td><td>${fmt(r.d0)}</td><td>${sh?((r.p95-sh.p95)>=0?'+':'')+(r.p95-sh.p95).toFixed(2):'—'}</td></tr>`).join('')||'<tr><td colspan=6>无匹配</td></tr>';
+}
+function renderRank(){
+  const s=[...DATA.provinces].sort((a,b)=>b[FUEL]-a[FUEL]);
+  document.getElementById('topExp').innerHTML=s.slice(0,3).map(r=>`<div>${r.province} ${fmt(r[FUEL])}</div>`).join('');
+  document.getElementById('topCheap').innerHTML=s.slice(-3).reverse().map(r=>`<div>${r.province} ${fmt(r[FUEL])}</div>`).join('');
+}
+async function drawTrend(){
+  const p=document.getElementById('trendProvince').value, f=document.getElementById('trendFuel').value;
+  const d=await j(`/api/trend?province=${encodeURIComponent(p)}&fuel=${f}`);
+  document.getElementById('trendNote').textContent=`${p} ${KEY[{92:'p92',95:'p95',98:'p98',0:'d0'}[f]]} · ${d.count} 个点 · 历史从 2026-10-15 开始积累`;
+  const c=document.getElementById('chart'), ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+  if(!d.series.length){ctx.fillText('暂无数据',20,30);return;}
+  const vals=d.series.map(x=>x.price), mn=Math.min(...vals), mx=Math.max(...vals);
+  ctx.beginPath(); d.series.forEach((x,i)=>{const X=40+i*(800/Math.max(1,d.series.length-1)), Y=230-((x.price-mn)/((mx-mn)||1))*200; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+  ctx.strokeStyle='#2563eb'; ctx.lineWidth=2; ctx.stroke();
+  d.series.forEach((x,i)=>{const X=40+i*(800/Math.max(1,d.series.length-1)), Y=230-((x.price-mn)/((mx-mn)||1))*200; ctx.beginPath();ctx.arc(X,Y,4,0,7);ctx.fillStyle='#2563eb';ctx.fill(); ctx.fillStyle='#111827'; ctx.fillText(x.price.toFixed(2),X-10,Y-10);});
+}
+async function loadExtra(){
+  const fc=await j('/api/forecast'); document.getElementById('forecastBox').innerHTML = fc.status==='estimated' ? `<b>${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</b> · 变化率 ${fc.change_rate_pct}% · 置信度：${fc.confidence||''}` : `<span class="warn">暂无预测数据</span> · ${fc.note||''}`;
+  const g=await j('/api/global'); document.getElementById('globalBox').innerHTML = g.status==='pending' ? `<span class="warn">待接入</span> · ${g.note||''}` : JSON.stringify(g);
+  const ci=await j('/api/cities'); document.getElementById('cityBox').innerHTML = ci.status==='collecting' ? `<span class="warn">城市数据收集中</span> · 非统一价省份：${(ci.non_unified_provinces||[]).join('、')} · ${ci.note||''}` : JSON.stringify(ci);
+}
+document.getElementById('q').oninput=renderTable;
+document.getElementById('sortSel').onchange=e=>{FUEL=e.target.value;load();};
+document.getElementById('sortDir').onclick=e=>{DESC=!DESC;e.target.textContent=DESC?'↓ 降序':'↑ 升序';renderTable();};
+document.getElementById('trendBtn').onclick=drawTrend;
+document.getElementById('calcBtn').onclick=()=>{const p=document.getElementById('calcProvince').value, f=document.getElementById('calcFuel').value, L=+document.getElementById('liters').value||0; const row=DATA.provinces.find(r=>r.province===p); const price=row[{92:'p92',95:'p95',98:'p98',0:'d0'}[f]]; document.getElementById('calcOut').textContent=`¥ ${(price*L).toFixed(2)}`; document.getElementById('calcDetail').textContent=`${p} ${f}号 ${price.toFixed(2)} 元/升 × ${L} 升`;};
+document.getElementById('compareBtn').onclick=()=>{const p=document.getElementById('calcProvince').value||'上海'; const row=DATA.provinces.find(r=>r.province===p)||DATA.provinces[0]; const fu=+document.getElementById('fuelUse').value||7.5, eu=+document.getElementById('elecUse').value||15, ep=+document.getElementById('elecPrice').value||0.6; const oil=row.p95*fu/100, ele=eu*ep/100; document.getElementById('compareOut').innerHTML=`油车（95# ${row.p95.toFixed(2)} 元/升，假设油耗 ${fu} L/100km）：<b>${oil.toFixed(2)} 元/km</b> · 电车（假设电耗 ${eu} kWh/100km、电价 ${ep} 元/kWh）：<b>${ele.toFixed(2)} 元/km</b> · 差值 ${(oil-ele).toFixed(2)} 元/km`;};
+document.getElementById('themeBtn').onclick=()=>{const cur=document.documentElement.dataset.theme; const next=cur==='dark'?'light':'dark'; document.documentElement.dataset.theme=next; document.getElementById('themeBtn').textContent=next==='dark'?'☀️ 浅色':'🌙 暗色';};
+// 账本
+function renderLedger(){const arr=JSON.parse(localStorage.getItem('china-fuel-ledger')||'[]'); let html=''; let total=0, liters=0; const byMonth={}; arr.forEach((x,i)=>{total+=x.amount; liters+=x.liters; const m=(x.date||'').slice(0,7); byMonth[m]=(byMonth[m]||0)+x.amount; let cons='—'; if(i>0&&x.km>arr[i-1].km) cons=((x.liters/(x.km-arr[i-1].km))*100).toFixed(2)+' L/100km'; html+=`<div>${x.date} ${x.liters}L ¥${x.amount} 里程 ${x.km} · 油耗 ${cons}</div>`;});
+document.getElementById('lOut').innerHTML=`共 ${arr.length} 笔 · 合计 ${liters.toFixed(1)} 升 · ¥${total.toFixed(2)} · 月均：${Object.entries(byMonth).map(([k,v])=>`${k} ¥${v.toFixed(0)}`).join('，')||'—'}`; document.getElementById('lList').innerHTML=html;}
+document.getElementById('lAdd').onclick=()=>{const arr=JSON.parse(localStorage.getItem('china-fuel-ledger')||'[]'); arr.push({date:document.getElementById('lDate').value||new Date().toISOString().slice(0,10), liters:+document.getElementById('lLiters').value||0, amount:+document.getElementById('lAmount').value||0, km:+document.getElementById('lKm').value||0}); localStorage.setItem('china-fuel-ledger',JSON.stringify(arr)); renderLedger();};
+document.getElementById('lClear').onclick=()=>{localStorage.removeItem('china-fuel-ledger'); renderLedger();};
+document.getElementById('pgBtn').onclick=async()=>{const p=document.getElementById('pgPath').value; try{document.getElementById('pgOut').textContent=JSON.stringify(await j(p),null,2).slice(0,4000)}catch(e){document.getElementById('pgOut').textContent='请求失败：'+e}};
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+load(); loadExtra(); renderLedger();
+</script></body></html>
