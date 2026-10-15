@@ -92,12 +92,11 @@ function renderHistory() {
   document.getElementById('histProvince').textContent = HP;
   if (!HISTORY.length) {
     list.innerHTML = '<div class="alert alert-info"><span>暂无历史快照。</span></div>';
-    renderPagination(0, 1, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
+    document.getElementById('histPagination').innerHTML = '';
     return;
   }
-  const totalPages = Math.max(1, Math.ceil(HISTORY.length / PAGE_SIZE));
-  if (HIST_PAGE > totalPages) HIST_PAGE = totalPages;
-  const pageRows = HISTORY.slice((HIST_PAGE - 1) * PAGE_SIZE, HIST_PAGE * PAGE_SIZE);
+  // 倒序：最新在前；去分页，20 条全显
+  const pageRows = [...HISTORY].reverse();
   const priceCell = (price, delta) => {
     if (price == null) return '<td class="tabular-nums">—</td>';
     const txt = delta == null ? '' : delta > 0 ? `+${delta.toFixed(2)}` : delta < 0 ? delta.toFixed(2) : '±0.00';
@@ -112,7 +111,7 @@ function renderHistory() {
     return `<tr><td class="whitespace-nowrap font-medium tabular-nums">${fmtDate(s.fetched_at)}</td><td><span class="badge ${statusCls} w-14 whitespace-nowrap">${status}</span></td>${priceCell(cur ? cur.p92 : null, d.p92)}${priceCell(cur ? cur.p95 : null, d.p95)}${priceCell(cur ? cur.p98 : null, d.p98)}${priceCell(cur ? cur.d0 : null, d.d0)}</tr>`;
   }).join('');
   list.innerHTML = `<div class="overflow-x-auto rounded-xl border border-base-300 bg-base-100"><table class="table w-full min-w-[680px] text-sm"><thead><tr><th class="whitespace-nowrap">日期</th><th class="whitespace-nowrap">状态</th><th class="whitespace-nowrap">92号汽油</th><th class="whitespace-nowrap">95号汽油</th><th class="whitespace-nowrap">98号汽油</th><th class="whitespace-nowrap">0号柴油</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
-  renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p) => { HIST_PAGE = p; renderHistory(); });
+  document.getElementById('histPagination').innerHTML = '';
 }
 window.onProvinceChange = () => { const tp = document.getElementById('trendProvince'); if (tp) tp.value = CURRENT; drawTrend(); renderHistory(); };
 async function load() {
