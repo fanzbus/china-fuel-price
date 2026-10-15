@@ -45,7 +45,7 @@ canvas{width:100%;height:auto;max-height:280px}
       <label class="sr-only" for="trendProvince">走势省份</label>
       <select id="trendProvince" data-province-select class="select select-bordered"></select>
       <label class="sr-only" for="trendFuel">走势油号</label>
-      <select id="trendFuel" class="select select-bordered"><option value="95">95号</option><option value="92">92号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
+      <select id="trendFuel" class="select select-bordered"><option value="92">92号</option><option value="95">95号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
       <button id="trendBtn" class="btn btn-primary">刷新</button>
     </div>
     <div class="mt-4 rounded-xl border border-base-300 bg-base-100 p-3">
@@ -72,7 +72,7 @@ canvas{width:100%;height:auto;max-height:280px}
 let DATA = null, HISTORY = [], HIST_PAGE = 1;
 async function drawTrend() {
   if (!DATA) return;
-  const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendFuel').value || '95';
+  const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendFuel').value || '92';
   const d = await j(`/api/trend?province=${encodeURIComponent(p)}&fuel=${f}`);
   document.getElementById('trendNote').textContent = `${p} ${KEY[FUEL_CODE[f]]} · ${d.count} 个点 · 历史从 2026-10-15 开始积累`;
   const c = document.getElementById('chart'), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
