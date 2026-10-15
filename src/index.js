@@ -113,9 +113,30 @@ export default {
         return text("not found", "text/plain", 404);
       }
       if (url.pathname.startsWith("/api/")) return json({ error: "not_found", path: url.pathname }, 404);
-      // 静态页
-      const asset = await env.ASSETS.fetch(request);
-      return asset;
+      // 真实多页（History 模式，无 #）：干净 URL -> 对应 HTML 文件
+      const PAGES = {
+        "/": "/index.html",
+        "/trend": "/trend.html",
+        "/trend/": "/trend.html",
+        "/tools": "/tools.html",
+        "/tools/": "/tools.html",
+        "/forecast": "/forecast.html",
+        "/forecast/": "/forecast.html",
+        "/api-docs": "/api-docs.html",
+        "/api-docs/": "/api-docs.html",
+      };
+      if (PAGES[url.pathname]) {
+        const r = await env.ASSETS.fetch(new URL(PAGES[url.pathname], url));
+        if (r.ok) return new Response(r.body, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" } });
+        return text("not found", "text/plain", 404);
+      }
+      // 静态资源白名单（CSS/JS/图标/数据/manifest/openapi 等）才走 ASSETS；未知路径 404，不用 SPA fallback
+      const STATIC_OK = /^\/(tailwind\.css|shared\.js|sw\.js|manifest\.webmanifest|icon-.*\.png|openapi\.yaml|index\.html|trend\.html|tools\.html|forecast\.html|api-docs\.html|data\/.*)$/;
+      if (STATIC_OK.test(url.pathname)) {
+        const asset = await env.ASSETS.fetch(request);
+        return asset;
+      }
+      return json({ error: "not_found", path: url.pathname }, 404);
     } catch (e) {
       return json({ error: "internal_error", message: String(e?.message || e) }, 500);
     }
