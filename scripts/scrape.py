@@ -15,6 +15,35 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python <3.9 fallback, not expected
+    ZoneInfo = None
+
+ET = ZoneInfo("America/New_York") if ZoneInfo else timezone(timedelta(hours=-5))
+
+
+def is_oil_trading_now(dt=None):
+    """原油期货是否在交易时段内。NYMEX WTI / ICE Brent 近似统一口径：
+    周日 18:00 ET 至周五 17:00 ET 连续交易，每日 17:00–18:00 ET 休市 1 小时，周六全天休市。
+    ET 用 zoneinfo 自动处理夏令时（EDT UTC-4 / EST UTC-5），不硬编码偏移。
+    dt 为空则取当前 UTC；naive dt 按 UTC 处理。"""
+    if dt is None:
+        dt = datetime.now(timezone.utc)
+    elif dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    et = dt.astimezone(ET)
+    wd = et.weekday()  # Mon=0 ... Sun=6
+    mins = et.hour * 60 + et.minute
+    if wd == 5:  # 周六全天休市
+        return False
+    if wd == 6:  # 周日 18:00 后开市
+        return mins >= 18 * 60
+    if wd == 4:  # 周五 00:00–17:00 交易，17:00 后休市至周日
+        return mins < 17 * 60
+    # 周一–周四：除每日 17:00–18:00 休市外均交易
+    return not (17 * 60 <= mins < 18 * 60)
+
 CST = timezone(timedelta(hours=8))  # 北京时间，种子与展示统一 +08:00
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -241,8 +270,11 @@ def try_forecast(provinces=None):
     元/吨 → 元/升：汽油按 0.725 kg/L 约 1380 L/吨，柴油按 0.84 约 1190 L/吨。
     校验：150 元/吨 /1380 ≈ 0.11 元/升，/1190 ≈ 0.13 元/升，与源站“150 元/吨≈0.11-0.14”量级一致。
     """
+    _trading = is_oil_trading_now()
     base = {"status": "no_data", "as_of": None, "change_rate_pct": None,
             "direction": None, "estimated_adjustment_yuan_per_ton": None,
+            "market_status": "trading" if _trading else "closed",
+            "market_status_note": "交易时段内" if _trading else "休市中，显示上一交易日收盘",
             "confidence": None,
             "formula": "10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。40 美元地板 / 130 美元天花板。本字段为规则估算，非官方预测。",
             "method": "Yahoo Finance Brent 期货 (BZ=F) + WTI 期货 (CL=F) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。Yahoo 取不到则回退 FRED；任一上游取不到则 status=no_data，不编造。",
@@ -334,6 +366,8 @@ def try_forecast(provinces=None):
         out = dict(base)
         out.update({
             "status": "estimated",
+            "market_status": "trading" if _trading else "closed",
+            "market_status_note": "交易时段内" if _trading else "休市中，显示上一交易日收盘",
             "oil_source": oil_source,
             "method": method,
             "sources": sources,
@@ -379,6 +413,28 @@ def try_forecast(provinces=None):
 
 
 def main():
+    if "--forecast-only" in sys.argv:
+        # 每小时 Action：休市跳过，不写文件、不触发提交；交易时段内只更新 forecast.json
+        if not is_oil_trading_now():
+            print("market closed, skip")
+            return
+        provinces = None
+        try:
+            _p = json.loads((DATA / "prices.json").read_text(encoding="utf-8"))
+            provinces = _p.get("provinces")
+        except Exception:  # noqa: BLE001 — 无省表时预测仍可算，仅无分省预测价
+            provinces = None
+        try:
+            forecast = try_forecast(provinces)
+        except Exception:  # noqa: BLE001
+            forecast = {"status": "no_data", "note": "预测计算失败。",
+                           "market_status": "trading", "market_status_note": "交易时段内"}
+        DATA.mkdir(parents=True, exist_ok=True)
+        PUBLIC_DATA.mkdir(parents=True, exist_ok=True)
+        (DATA / "forecast.json").write_text(json.dumps(forecast, ensure_ascii=False, indent=2), encoding="utf-8")
+        (PUBLIC_DATA / "forecast.json").write_text(json.dumps(forecast, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"OK forecast-only status={forecast.get('status')} oil_source={forecast.get('oil_source')} as_of={forecast.get('as_of')} market={forecast.get('market_status')}")
+        return
     html = fetch_text(SOURCE_URL)
     provinces, next_label, status = parse_prices(html)
     now = datetime.now(CST)
