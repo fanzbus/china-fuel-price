@@ -17,12 +17,12 @@
 </style></head>
 <body class="bg-base-100 font-sans antialiased">
 <header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/90 shadow-sm backdrop-blur">
-  <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+  <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6">
     <a href="/" class="flex items-center gap-3">
       <img src="/logo.png" alt="今日油价" width="40" height="40" style="width:40px;height:40px" class="h-10 w-10 shrink-0 rounded-xl shadow-sm">
       <span><span class="block text-[17px] font-bold leading-tight tracking-tight">今日油价</span><span class="block text-xs opacity-70">31 省汽油柴油价格</span></span>
     </a>
-    <nav class="flex items-center gap-1 overflow-x-auto">
+    <nav class="flex flex-wrap items-center gap-1 sm:flex-nowrap sm:overflow-x-auto">
       <a href="/" data-nav="/" class="btn btn-ghost btn-sm">今日油价</a>
       <a href="/trend" data-nav="/trend" class="btn btn-ghost btn-sm">走势</a>
       <a href="/tools" data-nav="/tools" class="btn btn-ghost btn-sm">工具</a>
@@ -54,7 +54,7 @@
     <div class="mt-4">
       <h3 class="text-sm font-semibold">当前省份：<span id="perLiterProvince">上海</span></h3>
       <div class="mt-2 overflow-x-auto rounded-xl border border-base-300">
-        <table class="table w-full min-w-[680px] text-sm">
+        <table class="table w-full min-w-[680px] text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
           <thead><tr><th>油号</th><th>现价（元/升）</th><th>预测价（元/升）</th><th>每升变动</th><th>变动幅度</th><th>每升变动区间</th></tr></thead>
           <tbody id="perLiterCurrent"></tbody>
         </table>
@@ -63,7 +63,7 @@
     <div class="mt-5">
       <h3 class="text-sm font-semibold">全国均价</h3>
       <div class="mt-2 overflow-x-auto rounded-xl border border-base-300">
-        <table class="table w-full min-w-[680px] text-sm">
+        <table class="table w-full min-w-[680px] text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
           <thead><tr><th>油号</th><th>现价（元/升）</th><th>预测价（元/升）</th><th>每升变动</th><th>变动幅度</th><th>每升变动区间</th></tr></thead>
           <tbody id="perLiterAvg"></tbody>
         </table>
@@ -73,7 +73,7 @@
       <h3 class="text-sm font-semibold">31 省预测价 + 每升变动</h3>
       <p class="mt-1 text-xs opacity-70">每省预测价 = 现价 + 每升变动；汽油（92/95/98）共用同一每升变动，柴油单独计算。括号内为现价。</p>
       <div class="mt-2 overflow-x-auto rounded-xl border border-base-300">
-        <table class="table w-full min-w-[900px] text-sm">
+        <table class="table w-full min-w-[900px] text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
           <thead><tr><th>省份</th><th>92 预测价</th><th>92 每升变动</th><th>95 预测价</th><th>95 每升变动</th><th>98 预测价</th><th>98 每升变动</th><th>柴油预测价</th><th>柴油每升变动</th></tr></thead>
           <tbody id="perLiterAll"></tbody>
         </table>
@@ -156,9 +156,9 @@ function renderForecast() {
   const arrow = fc.direction === '上调' ? '↑' : fc.direction === '下调' ? '↓' : '—';
   const range = fc.estimated_adjustment_range || {};
   box.innerHTML = `
-    <div class="alert alert-info"><span class="${dirColor} font-semibold">${arrow} 预计${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨（区间 ${range.low} ~ ${range.high} 元/吨）</span><span class="text-xs opacity-80">一揽子原油变化率 ${fc.change_rate_pct}% · Brent ${fc.brent ? fc.brent.avg_recent_10 : ''} / WTI ${fc.wti ? fc.wti.avg_recent_10 : ''} 美元/桶（近 10 日均值）· 汇率 ${fc.fx_usd_cny} · 数据截至 ${fmtDate(fc.as_of)}（FRED 滞后）· 置信度：${fc.confidence || ''}</span></div>
+    <div class="alert alert-info flex-col items-start gap-1.5 text-left sm:flex-row sm:items-center"><span class="${dirColor} font-semibold leading-snug whitespace-nowrap">${arrow} 预计${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</span><span class="text-xs leading-relaxed opacity-80 break-words">区间 ${range.low} ~ ${range.high} 元/吨 · 一揽子原油变化率 ${fc.change_rate_pct}% · Brent ${fc.brent ? fc.brent.avg_recent_10 : ''} / WTI ${fc.wti ? fc.wti.avg_recent_10 : ''} 美元/桶（近 10 日均值）· 汇率 ${fc.fx_usd_cny} · 数据截至 ${fmtDate(fc.as_of)}（FRED 滞后）· 置信度：${fc.confidence || ''}</span></div>
     ${fc.floor_ceiling && fc.floor_ceiling.brent_latest_near_130 ? '<div class="alert alert-warning mt-3"><span>提示：Brent 最新价已接近 130 美元天花板附近（单项提示，不触发天花板；以一揽子均价为准）。</span></div>' : ''}
-    <details class="collapse collapse-arrow border border-base-300 bg-base-100 mt-3"><summary class="collapse-title text-sm font-semibold">方法与来源（点击展开）</summary><div class="collapse-content text-xs leading-relaxed opacity-80"><p>${fc.method || ''}</p><p class="mt-1">${fc.derivation || ''}</p><p class="mt-1">${fc.disclaimer || ''} Brent：${fc.sources ? fc.sources.oil_brent : ''} · WTI：${fc.sources ? fc.sources.oil_wti : ''} · 汇率：${fc.sources ? fc.sources.fx : ''}</p></div></details>`;
+    <details class="collapse collapse-arrow border border-base-300 bg-base-100 mt-3"><summary class="collapse-title text-sm font-semibold">方法与来源（点击展开）</summary><div class="collapse-content text-xs leading-relaxed opacity-80 break-words"><p>${fc.method || ''}</p><p class="mt-1">${fc.derivation || ''}</p><p class="mt-1 break-all">${fc.disclaimer || ''} Brent：${fc.sources ? fc.sources.oil_brent : ''} · WTI：${fc.sources ? fc.sources.oil_wti : ''} · 汇率：${fc.sources ? fc.sources.fx : ''}</p></div></details>`;
 }
 window.onProvinceChange = () => { renderForecast(); renderPerLiter(); };
 async function load() {
