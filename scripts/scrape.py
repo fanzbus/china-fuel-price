@@ -174,6 +174,35 @@ def fetch_cities():
             "provinces": provinces_out, "count": total, "errors": errors}
 
 
+def _yahoo_series(symbol):
+    """Yahoo Finance 期货日线 JSON：返回 [(date, close)]，跳过空值。
+
+    URL: query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d
+    timestamp 为 UTC epoch 秒，转 YYYY-MM-DD。价格越界（<20 或 >200）视为脏数据抛错，触发回退。
+    """
+    raw = fetch_text(
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d",
+        timeout=20)
+    data = json.loads(raw)
+    result = (data.get("chart") or {}).get("result") or []
+    if not result:
+        raise ValueError(f"Yahoo empty result: {symbol}")
+    r0 = result[0]
+    stamps = r0.get("timestamp") or []
+    closes = ((r0.get("indicators") or {}).get("quote") or [{}])[0].get("close") or []
+    rows = []
+    for ts, c in zip(stamps, closes):
+        if c is None:
+            continue
+        if not (20.0 <= float(c) <= 200.0):
+            raise ValueError(f"Yahoo price out of range: {symbol} {c}")
+        d = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        rows.append((d, float(c)))
+    if len(rows) < 20:
+        raise ValueError(f"Yahoo too few points: {symbol} {len(rows)}")
+    return rows
+
+
 def _fred_series(series_id):
     """FRED 每日现货价 CSV：DATE,VALUE，空值（节假日）跳过。返回 [(date, price)]。"""
     csv_text = fetch_text(
@@ -197,8 +226,10 @@ def _fred_series(series_id):
 def try_forecast(provinces=None):
     """按发改委规则估算下次调价。任一上游取不到即返回 no_data（不编造）。
 
-    上游：FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 日度现货价 + ER-API USD/CNY。
-    Stooq 已于 2026-10-15 实测被 JS 验证墙拦截，故改用 FRED（美联储公开 CSV，无 Key）。
+    上游：主源 Yahoo Finance Brent 期货 (BZ=F) + WTI 期货 (CL=F) 日线 + ER-API USD/CNY；
+    Yahoo 任一失败则回退 FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 日度现货价。
+    Stooq 已于 2026-10-15 实测被 JS 验证墙拦截；FRED Brent 曾于 2026-10-02 单日 +18% 跳变
+    （114.82 → 135.51），10-06 仍 125.44、比市场价高约 20 美元，故 FRED 仅作备用回退，不作主源。
     注意：Brent/WTI 只是官方一揽子（Brent/Dubai/Minas 等）的免费代理，不是官方篮子。
     当前为新周期初期（上次 2026-10-15 24:00 搁浅），用最近 20 个交易日滚动对比
     （近 10 日均值 vs 再往前 10 日均值）作近似，越接近调价日越准，置信度低。
@@ -214,17 +245,33 @@ def try_forecast(provinces=None):
             "direction": None, "estimated_adjustment_yuan_per_ton": None,
             "confidence": None,
             "formula": "10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。40 美元地板 / 130 美元天花板。本字段为规则估算，非官方预测。",
-            "method": "FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。任一上游取不到则 status=no_data，不编造。",
+            "method": "Yahoo Finance Brent 期货 (BZ=F) + WTI 期货 (CL=F) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。Yahoo 取不到则回退 FRED；任一上游取不到则 status=no_data，不编造。",
             "note": "暂无预测数据：上游公开源取不到或不足 20 个交易日。",
             "sources": {"fx": "https://open.er-api.com/v6/latest/USD",
-                       "oil_brent": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU",
-                       "oil_wti": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILWTICO",
-                       "oil_note": "Stooq 于 2026-10-15 实测被 JS 验证墙拦截，已改用 FRED。"},
+                       "oil_brent": "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F?range=1mo&interval=1d",
+                       "oil_wti": "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?range=1mo&interval=1d",
+                       "oil_note": "主源 Yahoo Finance（BZ=F / CL=F 期货日线）；FRED 保留为备用回退。Stooq 于 2026-10-15 实测被 JS 验证墙拦截。"},
             "disclaimer": "预测仅供参考，以国家发改委官方通知为准。Brent/WTI 为官方一揽子的免费代理，非官方篮子；系数 1.0 与 ±30% 区间均为估算假设。"}
     try:
-        brent = _fred_series("DCOILBRENTEU")
-        wti = _fred_series("DCOILWTICO")
-        if len(brent) < 20 or len(wti) < 20:
+        # 主源 Yahoo（更实时），任一失败则回退 FRED；两者都失败则 no_data
+        oil_source = None
+        brent = wti = None
+        try:
+            y_brent = _yahoo_series("BZ=F")
+            y_wti = _yahoo_series("CL=F")
+            if len(y_brent) >= 20 and len(y_wti) >= 20:
+                brent, wti, oil_source = y_brent, y_wti, "yahoo"
+        except Exception:  # noqa: BLE001 — 回退 FRED
+            pass
+        if oil_source is None:
+            try:
+                f_brent = _fred_series("DCOILBRENTEU")
+                f_wti = _fred_series("DCOILWTICO")
+                if len(f_brent) >= 20 and len(f_wti) >= 20:
+                    brent, wti, oil_source = f_brent, f_wti, "fred"
+            except Exception:  # noqa: BLE001
+                pass
+        if oil_source is None:
             return base
         fx = json.loads(fetch_text("https://open.er-api.com/v6/latest/USD", timeout=15))
         usd_cny = fx.get("rates", {}).get("CNY")
@@ -265,12 +312,33 @@ def try_forecast(provinces=None):
             if not provinces:
                 return None
             return round(sum(r[key] for r in provinces) / len(provinces) + delta[key], 3)
-        as_of = min(brent[-1][0], wti[-1][0])  # FRED 滞后，as_of 取数据最后日期，非今天
+        as_of = min(brent[-1][0], wti[-1][0])  # 取数据最后日期，非今天
+        if oil_source == "yahoo":
+            as_of_note = "Yahoo Finance 最后交易日（通常为今天或上一交易日）。"
+            confidence = "低（新周期初期滚动近似 + 代理篮子 + 系数 1.0 假设，越接近调价日越准）"
+            method = ("Yahoo Finance Brent 期货 (BZ=F) + WTI 期货 (CL=F) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，"
+                      "取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。")
+            sources = {"fx": "https://open.er-api.com/v6/latest/USD",
+                        "oil_brent": "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F?range=1mo&interval=1d",
+                        "oil_wti": "https://query1.finance.yahoo.com/v8/finance/chart/CL=F?range=1mo&interval=1d",
+                        "oil_note": "主源 Yahoo Finance（BZ=F / CL=F 期货日线）；FRED 保留为备用回退。"}
+        else:  # fred fallback
+            as_of_note = "FRED 数据最后日期（滞后于今天），非抓取日期；Yahoo 取不到，已回退 FRED。"
+            confidence = "低（新周期初期滚动近似 + 代理篮子 + 系数 1.0 假设 + FRED 滞后，越接近调价日越准；FRED Brent 曾出现单日跳变，仅供参考）"
+            method = ("FRED Brent (DCOILBRENTEU) + WTI (DCOILWTICO) 最近 10 个交易日均值 vs 再往前 10 个交易日均值，"
+                      "取两者变化率均值；汇率用 ER-API USD/CNY；换算见 forecast.json 内 derivation。Yahoo 取不到，已回退 FRED。")
+            sources = {"fx": "https://open.er-api.com/v6/latest/USD",
+                        "oil_brent": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU",
+                        "oil_wti": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILWTICO",
+                        "oil_note": "Yahoo 取不到，已回退 FRED（美联储）。FRED Brent 2026-10-02 曾出现单日 +18% 跳变，结果仅供参考。"}
         out = dict(base)
         out.update({
             "status": "estimated",
+            "oil_source": oil_source,
+            "method": method,
+            "sources": sources,
             "as_of": as_of,
-            "as_of_note": "FRED 数据最后日期（滞后于今天），非抓取日期。",
+            "as_of_note": as_of_note,
             "brent": {"latest": brent[-1][1], "latest_date": brent[-1][0],
                       "avg_recent_10": round(b_recent, 2), "recent_range": [brent[-10][0], brent[-1][0]],
                       "avg_prev_10": round(b_prev, 2), "prev_range": [brent[-20][0], brent[-11][0]],
@@ -296,7 +364,7 @@ def try_forecast(provinces=None):
             "predicted_national_avg": {"p92": _navg("p92"), "p95": _navg("p95"),
                                        "p98": _navg("p98"), "d0": _navg("d0")},
             "predicted_prices": predicted,
-            "confidence": "低（新周期初期滚动近似 + 代理篮子 + 系数 1.0 假设 + FRED 滞后，越接近调价日越准）",
+            "confidence": confidence,
             "floor_ceiling": {"basket_vs_40": floor_hit, "basket_vs_130": ceiling_hit,
                               "brent_latest_near_130": brent_near_ceiling,
                               "note": "地板 40 / 天花板 130 按一揽子均价判断；Brent 单项接近 130 仅作提示，不触发天花板。"},
