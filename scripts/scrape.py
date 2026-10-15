@@ -191,6 +191,7 @@ def main():
     meta.update({"fetched_at": fetched_at, "updated_at": fetched_at,
                  "source": "qiyoujiage.com", "source_url": SOURCE_URL,
                  "next_adjustment": next_iso, "next_adjustment_label": next_label,
+                 "adjustment_status": status,
                  "history_start": meta.get("history_start", "2026-10-15")})
     (meta_path).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
