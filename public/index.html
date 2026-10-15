@@ -69,13 +69,13 @@ canvas{width:100%;max-height:260px}
 
 <section class="card" id="api"><h2 style="margin-top:0">🧑‍💻 开发者 API（免 Key，CORS 全开）</h2>
 <p class="muted">Base URL 为当前域名。示例：</p>
-<pre>curl https://YOUR-WORKERS-DEV/api/prices?province=上海
-curl https://YOUR-WORKERS-DEV/api/prices?fuel=95
-curl https://YOUR-WORKERS-DEV/api/history
-curl https://YOUR-WORKERS-DEV/api/trend?province=上海&amp;fuel=95
-curl https://YOUR-WORKERS-DEV/api/meta
-curl https://YOUR-WORKERS-DEV/api/forecast
-curl https://YOUR-WORKERS-DEV/api/export.csv</pre>
+<pre>curl https://china-fuel-price.fansys.workers.dev/api/prices?province=上海
+curl https://china-fuel-price.fansys.workers.dev/api/prices?fuel=95
+curl https://china-fuel-price.fansys.workers.dev/api/history
+curl https://china-fuel-price.fansys.workers.dev/api/trend?province=上海&amp;fuel=95
+curl https://china-fuel-price.fansys.workers.dev/api/meta
+curl https://china-fuel-price.fansys.workers.dev/api/forecast
+curl https://china-fuel-price.fansys.workers.dev/api/export.csv</pre>
 <div class="row"><a href="/openapi.yaml"><button class="ghost">OpenAPI YAML</button></a><a href="/api/export.csv"><button class="ghost">下载 CSV</button></a><a href="/rss.xml"><button class="ghost">RSS</button></a><a href="/health"><button class="ghost">/health</button></a></div>
 <p class="muted">Webhook：订阅调价变更可轮询 <code>/api/meta</code> 的 <code>fetched_at</code>，或订阅 <code>/rss.xml</code>。暂不提供推送服务。</p>
 <h3>在线 Playground</h3><div class="row"><select id="pgPath"><option>/api/prices</option><option>/api/prices?province=上海</option><option>/api/meta</option><option>/api/forecast</option><option>/api/history</option><option>/api/trend?province=上海&fuel=95</option><option>/health</option></select><button id="pgBtn">请求</button></div><pre id="pgOut">点“请求”查看返回</pre></section>
