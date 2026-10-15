@@ -18,7 +18,7 @@ canvas{width:100%;height:auto;max-height:280px}
 </style></head>
 <body class="bg-base-100 font-sans antialiased">
 <header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/90 shadow-sm backdrop-blur">
-  <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+  <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6">
     <a href="/" class="flex items-center gap-3">
       <img src="/logo.png" alt="今日油价" width="40" height="40" style="width:40px;height:40px" class="h-10 w-10 shrink-0 rounded-xl shadow-sm">
       <span>
@@ -26,7 +26,7 @@ canvas{width:100%;height:auto;max-height:280px}
         <span class="block text-xs opacity-70">31 省汽油柴油价格</span>
       </span>
     </a>
-    <nav class="flex items-center gap-1 overflow-x-auto">
+    <nav class="flex flex-wrap items-center gap-1 sm:flex-nowrap sm:overflow-x-auto">
       <a href="/" data-nav="/" class="btn btn-ghost btn-sm">今日油价</a>
       <a href="/trend" data-nav="/trend" class="btn btn-ghost btn-sm">走势</a>
       <a href="/tools" data-nav="/tools" class="btn btn-ghost btn-sm">工具</a>
@@ -46,13 +46,13 @@ canvas{width:100%;height:auto;max-height:280px}
       <div>
         <p class="text-[13px] opacity-70">今日 92 均价 · 全国 31 省平均</p>
         <div class="mt-1 flex items-baseline gap-2">
-          <span id="heroP92" class="text-[40px] font-bold leading-none tracking-tight tabular-nums">—</span>
+          <span id="heroP92" class="text-[32px] sm:text-[40px] font-bold leading-none tracking-tight tabular-nums">—</span>
           <span class="text-sm opacity-70">元 / 升</span>
         </div>
         <p id="metaLine" class="mt-2 text-xs opacity-70">加载中…</p>
       </div>
       <div class="w-full shrink-0 lg:w-[300px]">
-        <span id="adjustPill" class="badge badge-primary badge-soft">—</span>
+        <div id="adjustPill" class="flex flex-wrap gap-2"></div>
         <div class="mt-3">
           <div class="flex items-center justify-between text-xs opacity-70" title="按约 14 天为一周期估算">
             <span>本轮周期进度 · 约 14 天</span>
@@ -95,7 +95,7 @@ canvas{width:100%;height:auto;max-height:280px}
         <button id="sortDir" class="btn btn-outline">↓ 降序</button>
       </div>
     </div>
-    <div id="fuelTabs" role="tablist" class="tabs tabs-box mt-3"></div>
+    <div id="fuelTabs" role="tablist" class="tabs tabs-box mt-3 overflow-x-auto whitespace-nowrap"></div>
     <div class="mt-4 max-h-[560px] overflow-auto rounded-xl border border-base-300">
       <table class="table w-full min-w-[640px] text-sm">
         <thead><tr>
@@ -145,7 +145,7 @@ function cycleProgress() {
 function renderPrices() {
   if (!DATA) return;
   document.getElementById('metaLine').textContent = `更新于 ${fmtDateTime(DATA.fetched_at)} · 来源 qiyoujiage.com · 单位 元/升`;
-  document.getElementById('adjustPill').textContent = `下次调整：${DATA.next_adjustment_label || '—'} · ${DATA.adjustment_status || ''}`;
+  document.getElementById('adjustPill').innerHTML = `<span class="badge badge-primary badge-soft whitespace-nowrap">下次调整：${DATA.next_adjustment_label || '—'}</span><span class="badge badge-ghost whitespace-nowrap">${DATA.adjustment_status || ''}</span>`;
   document.getElementById('interpretation').textContent = DATA.interpretation || '';
   const avg = DATA.national_avg || {};
   document.getElementById('heroP92').textContent = fmt(avg.p92);
@@ -195,7 +195,7 @@ function renderTable() {
     const cell = (k) => `<td class="tabular-nums ${k === FUEL ? 'bg-primary/10 font-bold' : ''}">${fmt(r[k])}</td>`;
     const isCur = r.province === CURRENT;
     if (isCur) {
-      return `<tr class="sticky top-11 z-10 bg-base-200 shadow-[0_1px_0_0_var(--color-base-300)]"><td class="font-medium">${r.province}<span class="badge badge-primary badge-soft ml-2">当前</span></td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
+      return `<tr class="sticky top-11 z-10 bg-base-200 shadow-[0_1px_0_0_var(--color-base-300)]"><td class="font-medium">${r.province}<span class="badge badge-primary badge-soft ml-2 whitespace-nowrap">当前</span></td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
     }
     return `<tr><td class="font-medium">${r.province}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
   }).join('');
