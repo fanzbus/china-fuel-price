@@ -121,11 +121,11 @@ function renderPagination(total, page, elId, onPage) {
   });
 }
 function deltaBadge(delta) {
-  // 每升变动徽标：下调绿 ↓、上调红 ↑、0 灰
-  if (delta == null) return '<span class="badge">—</span>';
-  if (delta > 0) return `<span class="badge badge-error badge-soft">↑ +${delta.toFixed(3)} 元/升</span>`;
-  if (delta < 0) return `<span class="badge badge-success badge-soft">↓ ${delta.toFixed(3)} 元/升</span>`;
-  return '<span class="badge badge-ghost">±0.000 元/升</span>';
+  // 每升变动徽标：下调绿 ↓、上调红 ↑、0 灰；whitespace-nowrap 防换行断成两截
+  if (delta == null) return '<span class="badge whitespace-nowrap">—</span>';
+  if (delta > 0) return `<span class="badge badge-error badge-soft whitespace-nowrap">↑ +${delta.toFixed(3)} 元/升</span>`;
+  if (delta < 0) return `<span class="badge badge-success badge-soft whitespace-nowrap">↓ ${delta.toFixed(3)} 元/升</span>`;
+  return '<span class="badge badge-ghost whitespace-nowrap">±0.000 元/升</span>';
 }
 function registerSW() {
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => {}); }
