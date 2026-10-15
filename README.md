@@ -1,0 +1,80 @@
+# 今日油价 · china-fuel-price
+
+现代化汽油价格页面 + 公开 API，部署在 Cloudflare Workers，代码由 GitHub 维护。
+
+## 功能
+
+- **基础**：31 省 92 / 95 / 98 / 0号柴油、搜索、排序、全国均价、调价倒计时
+- **增强**：历史走势 + 调价日历、加油计算器、排行对比、城市级、多源校验
+- **预测**：Brent / WTI + 汇率 + 10 工作日变化率，按发改委 50 元/吨门槛预测下次涨跌
+- **对比与解读**：油 vs 电每公里成本（默认值标注为假设）、全球对比、每次调价一句话规则解读（标注为规则生成，非 LLM）
+- **开发者**：OpenAPI + Playground + CSV 导出 + RSS / Webhook 说明、数据开放
+- **体验**：PWA、暗色模式、移动端优先、车主账本（localStorage）、`/health` + 更新日志
+
+**已去掉**：众包校验、企业 API。API 保持免 Key 公开。
+
+## 数据来源与诚实性
+
+- 唯一价格事实来源：[qiyoujiage.com](http://www.qiyoujiage.com/) 首页 31 省表。只存价格数字 + 调价时间，不抄文章。
+- 种子数据：2026-10-15 实测（首个快照 `fetched_at: 2026-10-15T20:07:00+08:00`，验证重跑时为 20:09 同值），下次调整 10月15日24时，状态：搁浅（维持目前价格不变）。
+- 历史从 2026-10-15 开始积累，只有一个点就只画一个点。
+- 任何取不到 / 未验证的数据一律显示“暂无 / 待接入 / 收集中”，不编造、不补齐、不伪造历史。
+- 页面页脚标注：数据来源 qiyoujiage.com、仅供参考、以发改委官方通知为准。
+
+### 待接入 / 收集中（诚实清单）
+
+| 功能 | 状态 | 原因 |
+|---|---|---|
+| 城市级价格（9 个非统一价省拆到市） | 收集中 | 源站城市页结构未验证通过，不编造城市数据 |
+| 预测（Brent/WTI + 汇率） | 暂无预测数据 | 上游公开源尚未在自动任务中验证通过；公式与来源见 `data/forecast.json` |
+| 全球主要国家对比 | 待接入 | 需要可验证的公开来源与日期标注 |
+| 发改委公告逐项对照（多源校验） | 待接入 | 对照数据未接入；不一致标红逻辑已实现 |
+
+### 预测公式
+
+10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。
+上游：Stooq Brent (`brn.f`) 与 WTI (`cl.f`) 免费 CSV + ER-API USD/CNY（免费，无 Key）。任一上游取不到则 `status=no_data`。
+
+## API
+
+免 Key，CORS 全开。完整定义见 `openapi.yaml` / `/openapi.yaml`。
+
+```
+GET /api/prices[?province=上海&fuel=95]
+GET /api/history
+GET /api/trend?province=上海&fuel=95
+GET /api/meta
+GET /api/cities[?province=]
+GET /api/forecast
+GET /api/global
+GET /api/export.csv
+GET /health
+GET /rss.xml
+GET /openapi.yaml
+```
+
+Webhook：轮询 `/api/meta` 的 `fetched_at` 或订阅 `/rss.xml`。暂不提供推送服务。
+
+## 本地开发
+
+```bash
+npm install
+npm run sync-data   # data/ -> public/data/
+npm run dev         # wrangler dev，默认 http://localhost:8787
+curl localhost:8787/api/prices | head -c 500
+curl localhost:8787/health
+```
+
+## 数据更新
+
+GitHub Actions（`.github/workflows/update-prices.yml`）：每天 02:00 UTC + 可手动触发，跑 `scripts/scrape.py` 抓首页解析 → 写 `data/prices.json`、`data/history.jsonl`（有变动才追加）、`data/meta.json`，提交回仓库。`scrape.py` 带 UA 标识、失败重试 2 次、解析失败则不写脏数据直接失败退出。不要高频爬。
+
+## 部署（需手动建仓后执行，本仓库不含部署步骤）
+
+1. GitHub 新建公开仓库 `fanzbus/china-fuel-price`，把本目录内容 push 上去。
+2. Cloudflare：`npx wrangler login && npx wrangler deploy`，或在 Dashboard 用 Workers + GitHub 自动部署。
+3. 把 README / 页面里的 `YOUR-WORKERS-DEV` 换成实际域名。
+
+## 许可证
+
+价格数据为事实数据；代码 MIT（建议建仓时加 LICENSE）。
