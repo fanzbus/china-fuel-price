@@ -64,7 +64,9 @@ export default {
         const prices = await loadJson(env, url, "prices.json");
         const out = filterPrices(prices, url.searchParams);
         out.national_avg = { p92: avg(prices.provinces, "p92"), p95: avg(prices.provinces, "p95"), p98: avg(prices.provinces, "p98"), d0: avg(prices.provinces, "d0") };
-        out.interpretation = ruleInterpretation(await loadJson(env, url, "meta.json"), await loadJson(env, url, "forecast.json").catch(() => ({})));
+        const meta = await loadJson(env, url, "meta.json");
+        // adjustment_status 在 prices.json 中，合并后传给解读函数，避免 meta 缺字段导致搁浅被误判为暂无预测
+        out.interpretation = ruleInterpretation({ ...meta, adjustment_status: prices.adjustment_status || meta.adjustment_status }, await loadJson(env, url, "forecast.json").catch(() => ({})));
         return json(out);
       }
       if (url.pathname === "/api/meta") return json(await loadJson(env, url, "meta.json"));
