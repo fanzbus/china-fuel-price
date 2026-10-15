@@ -13,10 +13,8 @@ canvas{width:100%;height:auto;max-height:280px}
 ::-webkit-scrollbar-thumb{background:rgba(120,113,108,.35);border-radius:999px}
 </style></head>
 <body class="bg-paper font-sans text-ink antialiased dark:bg-night dark:text-slate-100">
-
-<!-- 顶栏 -->
 <header class="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur dark:border-white/10 dark:bg-night/85">
-  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
     <a href="/" class="flex items-center gap-3">
       <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v3h-4"/><path d="M16 13l2.5 2.5"/><circle cx="9" cy="14" r="1.4"/></svg>
@@ -27,15 +25,25 @@ canvas{width:100%;height:auto;max-height:280px}
       </span>
     </a>
     <nav class="flex items-center gap-2">
-      <a href="#api" class="hidden rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-ink dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white sm:block">API 文档</a>
+      <label class="sr-only" for="topProvince">当前省份</label>
+      <select id="topProvince" class="rounded-xl border border-line bg-white px-3 py-2 text-sm font-medium outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-white/[0.03]"></select>
+      <a href="/api-docs.html" class="hidden rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-ink dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white sm:block">API 文档</a>
       <button id="themeBtn" class="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">暗色</button>
     </nav>
   </div>
+  <div class="border-t border-line/70 dark:border-white/5">
+    <div class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6" id="tabBar" role="tablist" aria-label="功能分区">
+      <button data-tab="prices" role="tab" id="tabBtn-prices" class="shrink-0 border-b-2 border-brand px-4 py-2.5 text-sm font-semibold text-ink dark:text-white">今日油价</button>
+      <button data-tab="trend" role="tab" id="tabBtn-trend" class="shrink-0 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-ink dark:text-slate-400 dark:hover:text-white">走势</button>
+      <button data-tab="tools" role="tab" id="tabBtn-tools" class="shrink-0 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-ink dark:text-slate-400 dark:hover:text-white">工具</button>
+      <button data-tab="forecast" role="tab" id="tabBtn-forecast" class="shrink-0 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-ink dark:text-slate-400 dark:hover:text-white">预测</button>
+    </div>
+  </div>
 </header>
-
 <main class="mx-auto max-w-6xl space-y-4 px-4 pb-16 pt-4 sm:px-6 sm:pt-6">
 
-  <!-- Hero：今日 95 均价 + 状态胶囊 + 倒计时进度 -->
+<!-- Tab 1 今日油价 -->
+<div id="panel-prices" role="tabpanel">
   <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
@@ -60,19 +68,24 @@ canvas{width:100%;height:auto;max-height:280px}
         </div>
       </div>
     </div>
+    <div id="currentProvinceCard" class="mt-5 rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <p class="text-sm font-semibold">当前省份：<span id="currentProvinceName">上海</span></p>
+        <p class="text-xs text-muted dark:text-slate-400">顶部可切换，自动保存到浏览器</p>
+      </div>
+      <div id="currentProvincePrices" class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+    </div>
     <p id="interpretation" class="mt-5 border-t border-line pt-4 text-sm leading-relaxed text-slate-600 dark:border-white/10 dark:text-slate-300"></p>
     <div id="avgGrid" class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4"></div>
     <p class="mt-3 text-xs text-muted dark:text-slate-400">历史从 2026-10-15 开始积累，只有一个点就只画一个点。</p>
   </section>
-
-  <!-- 查询与排行：核心价格表 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+  <section class="mt-4 rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg></span>
         <h2 class="text-[15px] font-semibold tracking-tight">查询与排行</h2>
       </div>
-      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">价差以与上海 95 对比 · 红涨绿跌</p>
+      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block" id="diffHint">价差以与当前省份 95 对比 · 红涨绿跌</p>
     </div>
     <div class="mt-4 flex flex-col gap-3 md:flex-row">
       <div class="relative flex-1">
@@ -95,11 +108,12 @@ canvas{width:100%;height:auto;max-height:280px}
           <th scope="col" id="thP95" class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">95号汽油</th>
           <th scope="col" id="thP98" class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">98号汽油</th>
           <th scope="col" id="thD0" class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">0号柴油</th>
-          <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">与上海 95 价差</th>
+          <th scope="col" id="diffHeader" class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">与当前省份 95 价差</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
+    <div id="pricePagination" class="mt-4 flex flex-wrap items-center justify-between gap-3"></div>
     <div class="mt-3 grid gap-3 md:grid-cols-2">
       <div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <div class="flex items-center justify-between"><p class="text-sm font-semibold">最贵 Top 3</p><span class="text-xs text-muted dark:text-slate-400">按当前油号</span></div>
@@ -111,8 +125,10 @@ canvas{width:100%;height:auto;max-height:280px}
       </div>
     </div>
   </section>
+</div>
 
-  <!-- 历史走势 -->
+<!-- Tab 2 走势 -->
+<div id="panel-trend" role="tabpanel" class="hidden">
   <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
@@ -133,17 +149,22 @@ canvas{width:100%;height:auto;max-height:280px}
     </div>
     <p id="trendNote" class="mt-2 text-xs text-muted dark:text-slate-400"></p>
     <div class="mt-5 border-t border-line pt-4 dark:border-white/10">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
-          <h3 class="text-sm font-semibold">调价日历</h3>
-        </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+        <h3 class="text-sm font-semibold">调价日历</h3>
       </div>
       <div id="calendar" class="mt-2 rounded-xl border border-dashed border-line bg-paper p-4 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300">下次调整见顶部；历史调价记录随每次抓取自动追加，暂只有 2026-10-15 一个点。</div>
     </div>
+    <div class="mt-5 border-t border-line pt-4 dark:border-white/10">
+      <h3 class="text-sm font-semibold">历史快照</h3>
+      <div id="historyList" class="mt-2"></div>
+      <div id="histPagination" class="mt-3 flex flex-wrap items-center justify-between gap-3"></div>
+    </div>
   </section>
+</div>
 
-  <!-- 加油计算器 -->
+<!-- Tab 3 工具 -->
+<div id="panel-tools" role="tabpanel" class="hidden">
   <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
@@ -163,9 +184,7 @@ canvas{width:100%;height:auto;max-height:280px}
       <span id="calcDetail" class="text-sm text-muted dark:text-slate-400"></span>
     </div>
   </section>
-
-  <!-- 油 vs 电 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+  <section class="mt-4 rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
@@ -181,52 +200,7 @@ canvas{width:100%;height:auto;max-height:280px}
     </div>
     <div id="compareOut" class="mt-4"></div>
   </section>
-
-  <!-- 预测 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span>
-        <h2 class="text-[15px] font-semibold tracking-tight">下次调价预测</h2>
-      </div>
-      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">发改委 50 元/吨门槛</p>
-    </div>
-    <div id="forecastBox" class="mt-4">
-      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
-    </div>
-    <p class="mt-3 text-xs leading-relaxed text-muted dark:text-slate-400">公式：10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）。来源：Stooq Brent / WTI + ER-API USD/CNY。任一上游取不到则显示“暂无预测数据”，不编造。</p>
-  </section>
-
-  <!-- 全球对比 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
-        <h2 class="text-[15px] font-semibold tracking-tight">全球主要国家对比</h2>
-      </div>
-      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">待可验证来源</p>
-    </div>
-    <div id="globalBox" class="mt-4">
-      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
-    </div>
-  </section>
-
-  <!-- 城市级 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4M9 10h.01M15 10h.01M9 14h.01M15 14h.01"/></svg></span>
-        <h2 class="text-[15px] font-semibold tracking-tight">城市级价格</h2>
-      </div>
-      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">非统一价省份拆到市</p>
-    </div>
-    <div id="cityBox" class="mt-4">
-      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
-    </div>
-  </section>
-
-  <!-- 车主账本 -->
-  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+  <section class="mt-4 rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
@@ -244,55 +218,102 @@ canvas{width:100%;height:auto;max-height:280px}
     <div id="lOut" class="mt-4 text-sm font-medium"></div>
     <div id="lList" class="mt-2 text-sm text-muted dark:text-slate-400"></div>
   </section>
+</div>
 
-  <!-- 开发者 API -->
-  <section id="api" class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+<!-- Tab 4 预测 -->
+<div id="panel-forecast" role="tabpanel" class="hidden">
+  <section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg></span>
-        <h2 class="text-[15px] font-semibold tracking-tight">开发者 API</h2>
+        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span>
+        <h2 class="text-[15px] font-semibold tracking-tight">下次调价预测</h2>
       </div>
-      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">免 Key · CORS 全开</p>
+      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">发改委 50 元/吨门槛</p>
     </div>
-    <p class="mt-3 text-sm text-muted dark:text-slate-400">Base URL 为当前域名。示例：</p>
-    <pre class="mt-3 overflow-auto rounded-xl bg-[#0F172A] p-4 text-[13px] leading-relaxed text-slate-200 dark:bg-black/40">curl https://china-fuel-price.fansys.workers.dev/api/prices?province=上海
-curl https://china-fuel-price.fansys.workers.dev/api/prices?fuel=95
-curl https://china-fuel-price.fansys.workers.dev/api/history
-curl https://china-fuel-price.fansys.workers.dev/api/trend?province=上海&amp;fuel=95
-curl https://china-fuel-price.fansys.workers.dev/api/meta
-curl https://china-fuel-price.fansys.workers.dev/api/forecast
-curl https://china-fuel-price.fansys.workers.dev/api/export.csv</pre>
-    <div class="mt-3 flex flex-wrap gap-2">
-      <a href="/openapi.yaml" class="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">OpenAPI YAML</a>
-      <a href="/api/export.csv" class="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">下载 CSV</a>
-      <a href="/rss.xml" class="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">RSS</a>
-      <a href="/health" class="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">/health</a>
+    <div id="forecastBox" class="mt-4">
+      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
     </div>
-    <p class="mt-3 text-xs leading-relaxed text-muted dark:text-slate-400">Webhook：订阅调价变更可轮询 <code class="rounded bg-slate-100 px-1 py-0.5 text-xs dark:bg-white/10">/api/meta</code> 的 <code class="rounded bg-slate-100 px-1 py-0.5 text-xs dark:bg-white/10">fetched_at</code>，或订阅 <code class="rounded bg-slate-100 px-1 py-0.5 text-xs dark:bg-white/10">/rss.xml</code>。暂不提供推送服务。</p>
-    <h3 class="mt-5 text-sm font-semibold">在线 Playground</h3>
-    <div class="mt-2 flex flex-col gap-3 sm:flex-row">
-      <label class="sr-only" for="pgPath">API 路径</label>
-      <select id="pgPath" class="flex-1 rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-white/[0.03]"><option>/api/prices</option><option>/api/prices?province=上海</option><option>/api/meta</option><option>/api/forecast</option><option>/api/history</option><option>/api/trend?province=上海&amp;fuel=95</option><option>/health</option></select>
-      <button id="pgBtn" class="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98]">请求</button>
-    </div>
-    <pre id="pgOut" class="mt-3 overflow-auto rounded-xl bg-[#0F172A] p-4 text-[13px] leading-relaxed text-slate-200 dark:bg-black/40">点“请求”查看返回</pre>
+    <p class="mt-3 text-xs leading-relaxed text-muted dark:text-slate-400">公式：10 个工作日一揽子原油价格变化率；按发改委规则，变化率对应调价金额不足 50 元/吨时不作调整（搁浅）；低于 40 美元按 40 美元计、高于 130 美元原则上不提或少提。Brent/WTI 为官方一揽子的免费代理，非官方篮子。任一上游取不到则显示“暂无预测数据”，不编造。</p>
   </section>
-</main>
+  <section class="mt-4 rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+        <h2 class="text-[15px] font-semibold tracking-tight">全球主要国家对比</h2>
+      </div>
+      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">待可验证来源</p>
+    </div>
+    <div id="globalBox" class="mt-4">
+      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
+    </div>
+  </section>
+  <section class="mt-4 rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-night-card sm:p-6">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 dark:text-slate-500"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4M9 10h.01M15 10h.01M9 14h.01M15 14h.01"/></svg></span>
+        <h2 class="text-[15px] font-semibold tracking-tight">城市级价格</h2>
+      </div>
+      <p class="hidden text-xs text-muted dark:text-slate-400 sm:block">非统一价省份拆到市</p>
+    </div>
+    <div id="cityBox" class="mt-4">
+      <div class="flex items-center gap-3 rounded-xl border border-dashed border-line p-4 dark:border-white/10"><div class="h-4 w-4 animate-pulse rounded-full bg-slate-200 dark:bg-white/10"></div><p class="text-sm text-muted dark:text-slate-400">加载中…</p></div>
+    </div>
+  </section>
+</div>
 
+<!-- API 入口卡片（主页面只留入口，完整文档在 /api-docs.html） -->
+<section class="rounded-[20px] border border-line bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-night-card sm:p-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-[15px] font-semibold tracking-tight">开发者 API</h2>
+      <p class="mt-1 text-sm text-muted dark:text-slate-400">免 Key · CORS 全开 · 完整文档、Playground 与调用示例已搬到单独页面。</p>
+    </div>
+    <a href="/api-docs.html" class="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98]">打开 API 文档</a>
+  </div>
+</section>
+</main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs text-muted dark:text-slate-400 sm:px-6">
   <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium text-ink underline decoration-slate-300 underline-offset-2 hover:text-brand dark:text-slate-200 dark:decoration-slate-600">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 2026-10-15 开始积累</span>
   <span class="flex gap-3"><a href="/health" class="hover:text-ink dark:hover:text-white">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-ink dark:hover:text-white">GitHub</a></span>
 </footer>
-
-<!-- Tailwind 动态类保障：JS 生成的 HTML 里用到的、静态标记中未出现的工具类 -->
 <div aria-hidden="true" class="hidden bg-blue-50/70 text-red-600 text-emerald-600 dark:bg-blue-500/10 dark:text-red-400 dark:text-emerald-400 bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-500/20"></div>
-
 <script>
-let DATA=null, FUEL='p95', DESC=true;
+let DATA=null, FORECAST=null, HISTORY=[];
+let FUEL='p95', DESC=true, CURRENT='上海', PRICE_PAGE=1, HIST_PAGE=1;
+const PAGE_SIZE=10;
 const KEY={p92:'92号汽油',p95:'95号汽油',p98:'98号汽油',d0:'0号柴油'};
 const fuelKeys=['p92','p95','p98','d0'];
+const FUEL_CODE={92:'p92',95:'p95',98:'p98',0:'d0'};
+const PROVINCE_KEY='china-fuel-current-province';
 async function j(u){const r=await fetch(u);return r.json()}
 function fmt(n){return n==null?'—':n.toFixed(2)}
+function getCurrentProvince(){try{const v=localStorage.getItem(PROVINCE_KEY); if(v) return v;}catch(e){} return '上海';}
+function setCurrentProvince(p, save=true){
+  CURRENT=p;
+  if(save){try{localStorage.setItem(PROVINCE_KEY,p);}catch(e){}}
+  const tp=document.getElementById('topProvince'); if(tp) tp.value=p;
+  const cp=document.getElementById('calcProvince'); if(cp) cp.value=p;
+  const tr=document.getElementById('trendProvince'); if(tr) tr.value=p;
+  renderPrices(); renderTools(); renderForecast(); drawTrend();
+}
+function switchTab(name){
+  const tabs=['prices','trend','tools','forecast'];
+  if(!tabs.includes(name)) name='prices';
+  for(const t of tabs){
+    document.getElementById('panel-'+t).classList.toggle('hidden', t!==name);
+    const btn=document.getElementById('tabBtn-'+t);
+    const active=t===name;
+    btn.classList.toggle('border-brand', active);
+    btn.classList.toggle('text-ink', active);
+    btn.classList.toggle('dark:text-white', active);
+    btn.classList.toggle('font-semibold', active);
+    btn.classList.toggle('border-transparent', !active);
+    btn.classList.toggle('text-slate-500', !active);
+    btn.classList.toggle('dark:text-slate-400', !active);
+    btn.classList.toggle('font-medium', !active);
+  }
+  if(location.hash!=='#tab='+name) history.replaceState(null,'','#tab='+name);
+}
 function setTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
   try{localStorage.setItem('theme',dark?'dark':'light');}catch(e){}
@@ -315,8 +336,8 @@ function cycleProgress(){
   const bar=document.getElementById('cycleBar'); if(bar) bar.style.width=pct+'%';
   const lab=document.getElementById('cyclePct'); if(lab) lab.textContent=pct+'%';
 }
-async function load(){
-  DATA=await j('/api/prices'); const meta=await j('/api/meta');
+function renderPrices(){
+  if(!DATA) return;
   document.getElementById('metaLine').textContent=`更新于 ${DATA.fetched_at} · 来源 qiyoujiage.com · 单位 元/升`;
   document.getElementById('adjustPill').textContent=`下次调整：${DATA.next_adjustment_label||'—'} · ${DATA.adjustment_status||''}`;
   document.getElementById('interpretation').textContent=DATA.interpretation||'';
@@ -326,32 +347,63 @@ async function load(){
   const t=new Date(DATA.next_adjustment); const now=new Date();
   document.getElementById('countdown').textContent = DATA.next_adjustment ? `距离下次调整约 ${Math.max(0,Math.round((t-now)/3600000))} 小时` : '';
   cycleProgress();
+  // 当前省份卡
+  const cur=DATA.provinces.find(r=>r.province===CURRENT)||DATA.provinces[0];
+  document.getElementById('currentProvinceName').textContent=cur.province;
+  document.getElementById('currentProvincePrices').innerHTML=fuelKeys.map(k=>`<div><p class="text-xs text-muted dark:text-slate-400">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tracking-tight tabular-nums">${fmt(cur[k])}</p></div>`).join('');
+  const dh=document.getElementById('diffHeader'); if(dh) dh.textContent=`与${CURRENT} 95 价差`;
+  const hint=document.getElementById('diffHint'); if(hint) hint.textContent=`价差以与${CURRENT} 95 对比 · 红涨绿跌`;
+  // 油号 tabs
   const tabs=document.getElementById('fuelTabs');
   const on='flex-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm dark:bg-slate-800 dark:text-white';
   const off='flex-1 rounded-lg px-3 py-2 text-sm text-slate-500 transition hover:text-ink dark:text-slate-400 dark:hover:text-white';
   tabs.innerHTML=fuelKeys.map(k=>`<button data-k="${k}" class="${k===FUEL?on:off}">${KEY[k]}</button>`).join('');
-  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{FUEL=b.dataset.k;load();});
-  renderTable();
-  const provs=DATA.provinces.map(r=>r.province);
-  for(const id of ['trendProvince','calcProvince']){const s=document.getElementById(id); if(!s.dataset.done){s.innerHTML=provs.map(p=>`<option ${p==='上海'?'selected':''}>${p}</option>`).join(''); s.dataset.done=1;}}
-  renderRank(); drawTrend();
+  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{FUEL=b.dataset.k; PRICE_PAGE=1; renderPrices();});
+  renderTable(); renderRank();
 }
-function renderTable(){
+function filteredRows(){
   const q=(document.getElementById('q').value||'').trim();
   let rows=DATA.provinces.filter(r=>!q||r.province.includes(q));
   rows=[...rows].sort((a,b)=>DESC?b[FUEL]-a[FUEL]:a[FUEL]-b[FUEL]);
-  const sh=DATA.provinces.find(r=>r.province==='上海');
+  return rows;
+}
+function renderPagination(total, page, elId, onPage){
+  const totalPages=Math.max(1, Math.ceil(total/PAGE_SIZE));
+  const el=document.getElementById(elId);
+  const btnCls=(dis, act)=>`rounded-lg border px-3 py-1.5 text-sm transition ${act?'border-brand bg-brand text-white':dis?'cursor-not-allowed border-line text-slate-300 dark:border-white/10 dark:text-slate-600':'border-line bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]'}`;
+  let nums='';
+  for(let i=1;i<=totalPages;i++){
+    nums+=`<button data-p="${i}" class="${btnCls(false, i===page)}">${i}</button>`;
+  }
+  el.innerHTML=`<span class="text-xs text-muted dark:text-slate-400">共 ${total} 条 · 第 ${page} / ${totalPages} 页</span><div class="flex flex-wrap gap-1.5"><button data-p="prev" class="${btnCls(page<=1,false)}" ${page<=1?'disabled':''}>上一页</button>${nums}<button data-p="next" class="${btnCls(page>=totalPages,false)}" ${page>=totalPages?'disabled':''}>下一页</button></div>`;
+  el.querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.p;
+    let np=page;
+    if(v==='prev') np=page-1; else if(v==='next') np=page+1; else np=+v;
+    onPage(np);
+  });
+}
+function renderTable(){
+  if(!DATA) return;
+  const rows=filteredRows();
+  const totalPages=Math.max(1, Math.ceil(rows.length/PAGE_SIZE));
+  if(PRICE_PAGE>totalPages) PRICE_PAGE=totalPages;
+  const pageRows=rows.slice((PRICE_PAGE-1)*PAGE_SIZE, PRICE_PAGE*PAGE_SIZE);
+  const cur=DATA.provinces.find(r=>r.province===CURRENT);
   highlightCol();
   if(!rows.length){
     document.getElementById('tbody').innerHTML='<tr><td colspan="6" class="px-4 py-10 text-center"><p class="text-sm font-medium text-slate-600 dark:text-slate-300">没有匹配的省份</p><p class="mt-1 text-xs text-muted dark:text-slate-400">换个关键词试试，例如“上海 / 广东”</p></td></tr>';
+    renderPagination(0, 1, 'pricePagination', (p)=>{PRICE_PAGE=p; renderTable();});
     return;
   }
-  document.getElementById('tbody').innerHTML=rows.map(r=>{
-    const diff=sh?(r.p95-sh.p95):null;
+  document.getElementById('tbody').innerHTML=pageRows.map(r=>{
+    const diff=cur?(r.p95-cur.p95):null;
     const diffHtml=diff==null?'—':diff===0?'<span class="tabular-nums text-slate-500 dark:text-slate-400">±0.00</span>':diff>0?`<span class="font-semibold text-red-600 tabular-nums dark:text-red-400">↑ ${diff.toFixed(2)}</span>`:`<span class="font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">↓ ${Math.abs(diff).toFixed(2)}</span>`;
     const cell=(k)=>`<td class="h-[52px] px-4 tabular-nums ${k===FUEL?'bg-blue-50/70 font-bold dark:bg-blue-500/10':''}">${fmt(r[k])}</td>`;
-    return `<tr class="border-b border-line/70 last:border-0 hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.03] ${r.province==='上海'?'bg-blue-50/60 dark:bg-blue-500/[0.08]':''}"><td class="h-[52px] px-4 font-medium">${r.province}${r.province==='上海'?'<span class="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand dark:bg-blue-500/15 dark:text-blue-300">当前</span>':''}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td class="h-[52px] px-4">${diffHtml}</td></tr>`;
+    const isCur=r.province===CURRENT;
+    return `<tr class="border-b border-line/70 last:border-0 hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.03] ${isCur?'bg-blue-50/60 dark:bg-blue-500/[0.08]':''}"><td class="h-[52px] px-4 font-medium">${r.province}${isCur?'<span class="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand dark:bg-blue-500/15 dark:text-blue-300">当前</span>':''}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td class="h-[52px] px-4">${diffHtml}</td></tr>`;
   }).join('');
+  renderPagination(rows.length, PRICE_PAGE, 'pricePagination', (p)=>{PRICE_PAGE=p; renderTable();});
 }
 function renderRank(){
   const s=[...DATA.provinces].sort((a,b)=>b[FUEL]-a[FUEL]);
@@ -359,49 +411,117 @@ function renderRank(){
   document.getElementById('topExp').innerHTML=s.slice(0,3).map(row).join('');
   document.getElementById('topCheap').innerHTML=s.slice(-3).reverse().map(row).join('');
 }
+function renderTrend(){
+  drawTrend(); renderHistory();
+}
 async function drawTrend(){
-  const p=document.getElementById('trendProvince').value, f=document.getElementById('trendFuel').value;
+  if(!DATA) return;
+  const p=document.getElementById('trendProvince').value||CURRENT, f=document.getElementById('trendFuel').value||'95';
   const d=await j(`/api/trend?province=${encodeURIComponent(p)}&fuel=${f}`);
-  document.getElementById('trendNote').textContent=`${p} ${KEY[{92:'p92',95:'p95',98:'p98',0:'d0'}[f]]} · ${d.count} 个点 · 历史从 2026-10-15 开始积累`;
+  document.getElementById('trendNote').textContent=`${p} ${KEY[FUEL_CODE[f]]} · ${d.count} 个点 · 历史从 2026-10-15 开始积累`;
   const c=document.getElementById('chart'), ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
   if(!d.series.length){ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('暂无数据',20,30);return;}
   const vals=d.series.map(x=>x.price), mn=Math.min(...vals), mx=Math.max(...vals);
-  // 网格线
   ctx.strokeStyle='rgba(148,163,184,0.25)'; ctx.lineWidth=1;
   for(let g=0; g<=4; g++){const Y=30+g*50; ctx.beginPath(); ctx.moveTo(40,Y); ctx.lineTo(860,Y); ctx.stroke(); ctx.fillStyle='#94a3b8'; ctx.font='12px sans-serif'; ctx.fillText((mx-(mx-mn)*g/4).toFixed(2),4,Y+4);}
   ctx.beginPath(); d.series.forEach((x,i)=>{const X=40+i*(800/Math.max(1,d.series.length-1)), Y=230-((x.price-mn)/((mx-mn)||1))*200; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
   ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2; ctx.stroke();
   d.series.forEach((x,i)=>{const X=40+i*(800/Math.max(1,d.series.length-1)), Y=230-((x.price-mn)/((mx-mn)||1))*200; ctx.beginPath();ctx.arc(X,Y,4,0,7);ctx.fillStyle='#1d4ed8';ctx.fill(); ctx.fillStyle='#64748b'; ctx.font='12px sans-serif'; ctx.fillText(x.price.toFixed(2),X-10,Y-10);});
 }
+function renderHistory(){
+  const list=document.getElementById('historyList');
+  if(!HISTORY.length){
+    list.innerHTML='<div class="rounded-xl border border-dashed border-line p-4 text-sm text-muted dark:border-white/10 dark:text-slate-400">暂无历史快照。</div>';
+    renderPagination(0, 1, 'histPagination', (p)=>{HIST_PAGE=p; renderHistory();});
+    return;
+  }
+  const totalPages=Math.max(1, Math.ceil(HISTORY.length/PAGE_SIZE));
+  if(HIST_PAGE>totalPages) HIST_PAGE=totalPages;
+  const pageRows=HISTORY.slice((HIST_PAGE-1)*PAGE_SIZE, HIST_PAGE*PAGE_SIZE);
+  list.innerHTML=pageRows.map(s=>{
+    const cur=(s.provinces||[]).find(r=>r.province===CURRENT);
+    return `<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]"><span class="font-medium">${(s.fetched_at||'').slice(0,10)} · ${s.adjustment_status||''}</span><span class="text-muted dark:text-slate-400">${CURRENT} 92 ${cur?fmt(cur.p92):'—'} / 95 ${cur?fmt(cur.p95):'—'} / 98 ${cur?fmt(cur.p98):'—'} / 柴油 ${cur?fmt(cur.d0):'—'}</span></div>`;
+  }).join('');
+  renderPagination(HISTORY.length, HIST_PAGE, 'histPagination', (p)=>{HIST_PAGE=p; renderHistory();});
+}
+function renderTools(){
+  // 计算器 / 油 vs 电的默认省份跟随 CURRENT；不改用户已输入的升数/油耗等
+  const cp=document.getElementById('calcProvince'); if(cp && DATA) cp.value=CURRENT;
+}
 function emptyState(title, note, tone){
   const tones={amber:'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200', slate:'border-line bg-paper text-slate-600 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-300'};
   const cls=tones[tone]||tones.slate;
   return `<div class="flex items-start gap-3 rounded-xl border border-dashed ${cls} p-4"><span class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-current"></span><div><p class="text-sm font-semibold">${title}</p><p class="mt-0.5 text-xs leading-relaxed opacity-80">${note||''}</p></div></div>`;
 }
-async function loadExtra(){
-  const fc=await j('/api/forecast');
-  document.getElementById('forecastBox').innerHTML = fc.status==='estimated' ? `<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10"><p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨</p><p class="mt-0.5 text-xs text-emerald-800/80 dark:text-emerald-200/80">变化率 ${fc.change_rate_pct}% · 置信度：${fc.confidence||''}</p></div>` : emptyState('暂无预测数据', fc.note||'', 'amber');
-  const g=await j('/api/global');
-  document.getElementById('globalBox').innerHTML = g.status==='pending' ? emptyState('待接入', g.note||'', 'slate') : `<p class="text-sm">${JSON.stringify(g)}</p>`;
-  const ci=await j('/api/cities');
-  document.getElementById('cityBox').innerHTML = ci.status==='collecting' ? emptyState('城市数据收集中', `非统一价省份：${(ci.non_unified_provinces||[]).join('、')} · ${ci.note||''}`, 'slate') : `<p class="text-sm">${JSON.stringify(ci)}</p>`;
+function renderForecast(){
+  const box=document.getElementById('forecastBox');
+  const fc=FORECAST;
+  if(!fc){box.innerHTML=emptyState('暂无预测数据','正在加载…','amber'); return;}
+  if(fc.status!=='estimated'){
+    box.innerHTML=emptyState('暂无预测数据', fc.note||'', 'amber');
+    return;
+  }
+  const curPred=(fc.predicted_prices||[]).find(p=>p.province===CURRENT);
+  const curNow=DATA?DATA.provinces.find(r=>r.province===CURRENT):null;
+  const dirColor=fc.direction==='上调'?'text-red-600 dark:text-red-400':fc.direction==='下调'?'text-emerald-600 dark:text-emerald-400':'text-slate-600 dark:text-slate-300';
+  const arrow=fc.direction==='上调'?'↑':fc.direction==='下调'?'↓':'—';
+  const range=fc.estimated_adjustment_range||{};
+  const rows=(fc.predicted_prices||[]).map(p=>{
+    const now=(DATA?DATA.provinces.find(r=>r.province===p.province):null);
+    return `<tr class="border-b border-line/70 last:border-0 dark:border-white/5 ${p.province===CURRENT?'bg-blue-50/60 dark:bg-blue-500/[0.08]':''}"><td class="px-4 py-2.5 font-medium">${p.province}</td><td class="px-4 py-2.5 tabular-nums">${fmt(p.p92)} <span class="text-xs text-muted">(${now?fmt(now.p92):'—'})</span></td><td class="px-4 py-2.5 tabular-nums">${fmt(p.p95)} <span class="text-xs text-muted">(${now?fmt(now.p95):'—'})</span></td><td class="px-4 py-2.5 tabular-nums">${fmt(p.p98)} <span class="text-xs text-muted">(${now?fmt(now.p98):'—'})</span></td><td class="px-4 py-2.5 tabular-nums">${fmt(p.d0)} <span class="text-xs text-muted">(${now?fmt(now.d0):'—'})</span></td></tr>`;
+  }).join('');
+  box.innerHTML=`
+    <div class="rounded-xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.02]">
+      <p class="text-sm font-semibold ${dirColor}">${arrow} 预计${fc.direction}约 ${fc.estimated_adjustment_yuan_per_ton} 元/吨（区间 ${range.low} ~ ${range.high} 元/吨）</p>
+      <p class="mt-1 text-xs text-muted dark:text-slate-400">一揽子原油变化率 ${fc.change_rate_pct}% · Brent ${fc.brent?fc.brent.avg_recent_10:''} / WTI ${fc.wti?fc.wti.avg_recent_10:''} 美元/桶（近 10 日均值）· 汇率 ${fc.fx_usd_cny} · 数据截至 ${fc.as_of}（FRED 滞后）· 置信度：${fc.confidence||''}</p>
+      ${fc.floor_ceiling&&fc.floor_ceiling.brent_latest_near_130?'<p class="mt-1 text-xs text-amber-800 dark:text-amber-200">提示：Brent 最新价已接近 130 美元天花板附近（单项提示，不触发天花板；以一揽子均价为准）。</p>':''}
+    </div>
+    <div class="mt-3 rounded-xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.02]">
+      <p class="text-sm font-semibold">当前省份 ${CURRENT} 预测价 <span class="font-normal text-muted">（括号内为当前价）</span></p>
+      ${curPred&&curNow?`<div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">${fuelKeys.map(k=>`<div><p class="text-xs text-muted dark:text-slate-400">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tabular-nums">${fmt(curPred[k])}</p><p class="text-xs text-muted">当前 ${fmt(curNow[k])} · 变化 ${fmt(curPred[k]-curNow[k])}</p></div>`).join('')}</div>`:'<p class="mt-2 text-sm text-muted">暂无当前省份预测价</p>'}
+      <p class="mt-2 text-xs text-muted">全国均价预测：92 ${fmt(fc.predicted_national_avg?fc.predicted_national_avg.p92:null)} / 95 ${fmt(fc.predicted_national_avg?fc.predicted_national_avg.p95:null)} / 98 ${fmt(fc.predicted_national_avg?fc.predicted_national_avg.p98:null)} / 柴油 ${fmt(fc.predicted_national_avg?fc.predicted_national_avg.d0:null)} 元/升</p>
+    </div>
+    <details class="mt-3 rounded-xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.02]"><summary class="cursor-pointer text-sm font-semibold">方法与来源（点击展开）</summary><p class="mt-2 text-xs leading-relaxed text-muted dark:text-slate-400">${fc.method||''}</p><p class="mt-1 text-xs leading-relaxed text-muted dark:text-slate-400">${fc.derivation||''}</p><p class="mt-1 text-xs leading-relaxed text-muted dark:text-slate-400">${fc.disclaimer||''} Brent：${fc.sources?fc.sources.oil_brent:''} · WTI：${fc.sources?fc.sources.oil_wti:''} · 汇率：${fc.sources?fc.sources.fx:''}</p></details>
+    <div class="mt-3 overflow-x-auto rounded-xl border border-line dark:border-white/10"><table class="w-full min-w-[640px] border-collapse text-sm"><thead><tr class="border-b border-line bg-paper dark:border-white/10 dark:bg-white/[0.02]"><th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">省份</th><th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">预测 92</th><th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">预测 95</th><th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">预测 98</th><th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">预测柴油</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-document.getElementById('q').oninput=renderTable;
-document.getElementById('sortSel').onchange=e=>{FUEL=e.target.value;load();};
-document.getElementById('sortDir').onclick=e=>{DESC=!DESC;e.target.textContent=DESC?'↓ 降序':'↑ 升序';renderTable();};
+async function load(){
+  DATA=await j('/api/prices'); const meta=await j('/api/meta');
+  DATA.interpretation=DATA.interpretation||'';
+  CURRENT=getCurrentProvince();
+  if(!DATA.provinces.find(r=>r.province===CURRENT)) CURRENT='上海';
+  const provs=DATA.provinces.map(r=>r.province);
+  const tp=document.getElementById('topProvince');
+  tp.innerHTML=provs.map(p=>`<option ${p===CURRENT?'selected':''}>${p}</option>`).join('');
+  tp.onchange=()=>setCurrentProvince(tp.value);
+  for(const id of ['trendProvince','calcProvince']){
+    const s=document.getElementById(id);
+    s.innerHTML=provs.map(p=>`<option ${p===CURRENT?'selected':''}>${p}</option>`).join('');
+    s.onchange=()=>{ if(id==='trendProvince') drawTrend(); };
+  }
+  document.getElementById('calcProvince').onchange=()=>{};
+  const m=location.hash.match(/#tab=(prices|trend|tools|forecast)/);
+  switchTab(m?m[1]:'prices');
+  renderPrices(); renderTools(); renderHistory();
+  const [fc, g, ci, hist]=await Promise.all([j('/api/forecast'), j('/api/global'), j('/api/cities'), j('/api/history')]);
+  FORECAST=fc; HISTORY=hist.snapshots||[];
+  document.getElementById('globalBox').innerHTML = g.status==='pending' ? emptyState('待接入', g.note||'', 'slate') : `<p class="text-sm">${JSON.stringify(g)}</p>`;
+  document.getElementById('cityBox').innerHTML = ci.status==='collecting' ? emptyState('城市数据收集中', `非统一价省份：${(ci.non_unified_provinces||[]).join('、')} · ${ci.note||''}`, 'slate') : `<p class="text-sm">${JSON.stringify(ci)}</p>`;
+  renderForecast(); renderHistory();
+}
+document.getElementById('q').oninput=()=>{PRICE_PAGE=1; renderTable();};
+document.getElementById('sortSel').onchange=e=>{FUEL=e.target.value; PRICE_PAGE=1; renderPrices();};
+document.getElementById('sortDir').onclick=e=>{DESC=!DESC;e.target.textContent=DESC?'↓ 降序':'↑ 升序'; renderTable();};
 document.getElementById('trendBtn').onclick=drawTrend;
-document.getElementById('calcBtn').onclick=()=>{const p=document.getElementById('calcProvince').value, f=document.getElementById('calcFuel').value, L=+document.getElementById('liters').value||0; const row=DATA.provinces.find(r=>r.province===p); const price=row[{92:'p92',95:'p95',98:'p98',0:'d0'}[f]]; document.getElementById('calcOut').textContent=`¥ ${(price*L).toFixed(2)}`; document.getElementById('calcDetail').textContent=`${p} ${f}号 ${price.toFixed(2)} 元/升 × ${L} 升`;};
-document.getElementById('compareBtn').onclick=()=>{const p=document.getElementById('calcProvince').value||'上海'; const row=DATA.provinces.find(r=>r.province===p)||DATA.provinces[0]; const fu=+document.getElementById('fuelUse').value||7.5, eu=+document.getElementById('elecUse').value||15, ep=+document.getElementById('elecPrice').value||0.6; const oil=row.p95*fu/100, ele=eu*ep/100; document.getElementById('compareOut').innerHTML=`<div class="grid gap-3 sm:grid-cols-3"><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">油车 · 95# ${row.p95.toFixed(2)} 元/升</p><p class="mt-1 text-xl font-bold tabular-nums">${oil.toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">假设油耗 ${fu} L/100km</p></div><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">电车</p><p class="mt-1 text-xl font-bold tabular-nums">${ele.toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">假设电耗 ${eu} kWh/100km · 电价 ${ep} 元/kWh</p></div><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">差值</p><p class="mt-1 text-xl font-bold tabular-nums">${(oil-ele).toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">油车 − 电车</p></div></div>`;};
+document.getElementById('calcBtn').onclick=()=>{const p=document.getElementById('calcProvince').value, f=document.getElementById('calcFuel').value, L=+document.getElementById('liters').value||0; const row=DATA.provinces.find(r=>r.province===p); const price=row[FUEL_CODE[f]]; document.getElementById('calcOut').textContent=`¥ ${(price*L).toFixed(2)}`; document.getElementById('calcDetail').textContent=`${p} ${f}号 ${price.toFixed(2)} 元/升 × ${L} 升`;};
+document.getElementById('compareBtn').onclick=()=>{const p=CURRENT; const row=DATA.provinces.find(r=>r.province===p)||DATA.provinces[0]; const fu=+document.getElementById('fuelUse').value||7.5, eu=+document.getElementById('elecUse').value||15, ep=+document.getElementById('elecPrice').value||0.6; const oil=row.p95*fu/100, ele=eu*ep/100; document.getElementById('compareOut').innerHTML=`<div class="grid gap-3 sm:grid-cols-3"><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">油车 · ${p} 95# ${row.p95.toFixed(2)} 元/升</p><p class="mt-1 text-xl font-bold tabular-nums">${oil.toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">假设油耗 ${fu} L/100km</p></div><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">电车</p><p class="mt-1 text-xl font-bold tabular-nums">${ele.toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">假设电耗 ${eu} kWh/100km · 电价 ${ep} 元/kWh</p></div><div class="rounded-2xl border border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]"><p class="text-xs text-muted dark:text-slate-400">差值</p><p class="mt-1 text-xl font-bold tabular-nums">${(oil-ele).toFixed(2)} <span class="text-xs font-normal text-muted dark:text-slate-400">元 / km</span></p><p class="mt-0.5 text-xs text-muted dark:text-slate-400">油车 − 电车</p></div></div>`;};
 document.getElementById('themeBtn').onclick=()=>{setTheme(!document.documentElement.classList.contains('dark'));};
-// 初始化主题按钮文案（<head> 已按 localStorage / 系统设置好 class）
 setTheme(document.documentElement.classList.contains('dark'));
-// 账本
+document.querySelectorAll('#tabBar button[data-tab]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
 function renderLedger(){const arr=JSON.parse(localStorage.getItem('china-fuel-ledger')||'[]'); let html=''; let total=0, liters=0; const byMonth={}; arr.forEach((x,i)=>{total+=x.amount; liters+=x.liters; const m=(x.date||'').slice(0,7); byMonth[m]=(byMonth[m]||0)+x.amount; let cons='—'; if(i>0&&x.km>arr[i-1].km) cons=((x.liters/(x.km-arr[i-1].km))*100).toFixed(2)+' L/100km'; html+=`<div class="flex items-center justify-between gap-3 border-b border-line/70 py-2 text-sm last:border-0 dark:border-white/5"><span>${x.date} · ${x.liters}L · ¥${x.amount}</span><span class="text-muted dark:text-slate-400">里程 ${x.km} · 油耗 ${cons}</span></div>`;});
 if(!arr.length) html='<div class="rounded-xl border border-dashed border-line p-4 text-sm text-muted dark:border-white/10 dark:text-slate-400">暂无记录，记第一笔试试。</div>';
 document.getElementById('lOut').innerHTML=`共 ${arr.length} 笔 · 合计 ${liters.toFixed(1)} 升 · ¥${total.toFixed(2)} · 月均：${Object.entries(byMonth).map(([k,v])=>`${k} ¥${v.toFixed(0)}`).join('，')||'—'}`; document.getElementById('lList').innerHTML=html;}
 document.getElementById('lAdd').onclick=()=>{const arr=JSON.parse(localStorage.getItem('china-fuel-ledger')||'[]'); arr.push({date:document.getElementById('lDate').value||new Date().toISOString().slice(0,10), liters:+document.getElementById('lLiters').value||0, amount:+document.getElementById('lAmount').value||0, km:+document.getElementById('lKm').value||0}); localStorage.setItem('china-fuel-ledger',JSON.stringify(arr)); renderLedger();};
 document.getElementById('lClear').onclick=()=>{localStorage.removeItem('china-fuel-ledger'); renderLedger();};
-document.getElementById('pgBtn').onclick=async()=>{const p=document.getElementById('pgPath').value; try{document.getElementById('pgOut').textContent=JSON.stringify(await j(p),null,2).slice(0,4000)}catch(e){document.getElementById('pgOut').textContent='请求失败：'+e}};
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
-load(); loadExtra(); renderLedger();
+load(); renderLedger();
 </script></body></html>
