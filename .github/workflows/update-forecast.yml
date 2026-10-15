@@ -1,0 +1,23 @@
+name: update-forecast
+on:
+  schedule:
+    - cron: "0 * * * *"  # 每小时整点；scrape.py --forecast-only 内判断交易时段，休市跳过不写文件
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Update forecast only (hourly, skip when market closed)
+        run: python3 scripts/scrape.py --forecast-only
+      - name: Commit if changed
+        run: |
+          git config user.name "china-fuel-price-bot"
+          git config user.email "bot@example.com"
+          git add data/forecast.json public/data/forecast.json
+          git diff --cached --quiet || git commit -m "chore(data): update forecast $(date -u +%F-%H)"
+          git push
