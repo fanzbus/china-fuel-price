@@ -4,6 +4,9 @@
 <title>工具 · 今日油价</title>
 <meta name="description" content="加油计算器、油 vs 电对比、车主账本。">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="theme-color" content="#FAFAF8">
 <link rel="stylesheet" href="/tailwind.css">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.setAttribute('data-theme','light');}}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
@@ -13,12 +16,10 @@
 ::-webkit-scrollbar-thumb{background:rgba(120,113,108,.35);border-radius:999px}
 </style></head>
 <body class="bg-base-100 font-sans antialiased">
-<header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/85 backdrop-blur">
+<header class="navbar sticky top-0 z-40 border-b border-base-300 bg-base-100/90 shadow-sm backdrop-blur">
   <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
     <a href="/" class="flex items-center gap-3">
-      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-content">
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v3h-4"/><path d="M16 13l2.5 2.5"/><circle cx="9" cy="14" r="1.4"/></svg>
-      </span>
+      <img src="/logo.png" alt="今日油价" class="h-10 w-10 rounded-xl shadow-sm">
       <span><span class="block text-[17px] font-bold leading-tight tracking-tight">今日油价</span><span class="block text-xs opacity-70">31 省汽油柴油价格</span></span>
     </a>
     <nav class="flex items-center gap-1 overflow-x-auto">
@@ -34,7 +35,7 @@
   </div>
 </header>
 <main class="mx-auto max-w-6xl space-y-4 px-4 pb-16 pt-4 sm:px-6 sm:pt-6">
-<section class="card bg-base-200 shadow-sm">
+<section class="card border border-base-300/60 bg-base-200 shadow-md shadow-base-300/20">
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">加油计算器</h2>
@@ -52,7 +53,7 @@
     </div>
   </div>
 </section>
-<section class="card bg-base-200 shadow-sm">
+<section class="card border border-base-300/60 bg-base-200 shadow-md shadow-base-300/20">
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">油 vs 电：每公里成本</h2>
@@ -67,7 +68,7 @@
     <div id="compareOut" class="mt-4"></div>
   </div>
 </section>
-<section class="card bg-base-200 shadow-sm">
+<section class="card border border-base-300/60 bg-base-200 shadow-md shadow-base-300/20">
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">车主账本</h2>
@@ -86,7 +87,7 @@
 </section>
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
-  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 2026-10-15 开始积累</span>
+  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 10月15日开始积累</span>
   <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
@@ -113,10 +114,10 @@ function renderLedger() {
     total += x.amount; liters += x.liters;
     const m = (x.date || '').slice(0, 7); byMonth[m] = (byMonth[m] || 0) + x.amount;
     let cons = '—'; if (i > 0 && x.km > arr[i - 1].km) cons = ((x.liters / (x.km - arr[i - 1].km)) * 100).toFixed(2) + ' L/100km';
-    html += `<div class="flex items-center justify-between gap-3 border-b border-base-300 py-2 text-sm last:border-0"><span>${x.date} · ${x.liters}L · ¥${x.amount}</span><span class="opacity-70">里程 ${x.km} · 油耗 ${cons}</span></div>`;
+    html += `<div class="flex items-center justify-between gap-3 border-b border-base-300 py-2 text-sm last:border-0"><span>${fmtDate(x.date)} · ${x.liters}L · ¥${x.amount}</span><span class="opacity-70">里程 ${x.km} · 油耗 ${cons}</span></div>`;
   });
   if (!arr.length) html = '<div class="alert alert-info"><span>暂无记录，记第一笔试试。</span></div>';
-  document.getElementById('lOut').innerHTML = `共 ${arr.length} 笔 · 合计 ${liters.toFixed(1)} 升 · ¥${total.toFixed(2)} · 月均：${Object.entries(byMonth).map(([k, v]) => `${k} ¥${v.toFixed(0)}`).join('，') || '—'}`;
+  document.getElementById('lOut').innerHTML = `共 ${arr.length} 笔 · 合计 ${liters.toFixed(1)} 升 · ¥${total.toFixed(2)} · 月均：${Object.entries(byMonth).map(([k, v]) => `${fmtDate(k + '-01').replace('1日', '')} ¥${v.toFixed(0)}`).join('，') || '—'}`;
   document.getElementById('lList').innerHTML = html;
 }
 window.onProvinceChange = () => { doCalc(); doCompare(); };
