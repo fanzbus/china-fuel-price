@@ -93,7 +93,7 @@ canvas{width:100%;height:auto;max-height:280px}
         <button id="sortDir" class="btn btn-outline">↓ 降序</button>
       </div>
     </div>
-    <div id="fuelTabs" role="tablist" class="tabs tabs-box mt-3 overflow-x-auto whitespace-nowrap"></div>
+    <div id="oilTabs" role="tablist" class="tabs tabs-box mt-3 overflow-x-auto whitespace-nowrap"></div>
     <div class="mt-4 max-h-[560px] overflow-auto rounded-xl border border-base-300">
       <table class="table w-full min-w-[640px] text-sm">
         <thead><tr>
@@ -127,11 +127,11 @@ canvas{width:100%;height:auto;max-height:280px}
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
   <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 10月15日开始积累</span>
-  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/oil-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
 let DATA = null;
-let FUEL = 'p92', DESC = true;
+let OIL = 'p92', DESC = true;
 let LATEST_DELTA = null, LATEST_DELTA_DATE = '';
 function deltaSmall(k) {
   if (!LATEST_DELTA || LATEST_DELTA[k] == null) return '';
@@ -170,35 +170,35 @@ function renderPrices() {
   document.getElementById('interpretation').textContent = DATA.interpretation || '';
   const avg = DATA.national_avg || {};
   document.getElementById('heroP92').textContent = fmt(avg.p92);
-  document.getElementById('avgGrid').innerHTML = FUEL_KEYS.map(k => `<div class="stat"><div class="stat-title text-xs">全国均价 · ${KEY[k]}</div><div class="stat-value text-2xl tabular-nums">${fmt(avg[k])}${deltaSmall(k)}</div><div class="stat-desc">元 / 升</div></div>`).join('');
+  document.getElementById('avgGrid').innerHTML = OIL_KEYS.map(k => `<div class="stat"><div class="stat-title text-xs">全国均价 · ${KEY[k]}</div><div class="stat-value text-2xl tabular-nums">${fmt(avg[k])}${deltaSmall(k)}</div><div class="stat-desc">元 / 升</div></div>`).join('');
   const t = new Date(DATA.next_adjustment); const now = new Date();
   const expired2 = DATA.next_adjustment && t <= now;
   document.getElementById('countdown').textContent = !DATA.next_adjustment ? '' : expired2 ? '源站尚未公布下次调整时间' : `距离下次调整 ${fmtCountdown(DATA.next_adjustment)}`;
   cycleProgress();
   const cur = DATA.provinces.find(r => r.province === CURRENT) || DATA.provinces[0];
   document.getElementById('currentProvinceName').textContent = cur.province;
-  document.getElementById('currentProvincePrices').innerHTML = FUEL_KEYS.map(k => `<div><p class="text-xs opacity-70">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tracking-tight tabular-nums">${fmt(cur[k])}${deltaSmall(k)}</p></div>`).join('');
+  document.getElementById('currentProvincePrices').innerHTML = OIL_KEYS.map(k => `<div><p class="text-xs opacity-70">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tracking-tight tabular-nums">${fmt(cur[k])}${deltaSmall(k)}</p></div>`).join('');
   const dh = document.getElementById('diffHeader'); if (dh) dh.textContent = `与${CURRENT} 92 价差`;
   const hint = document.getElementById('diffHint'); if (hint) hint.textContent = `价差以与${CURRENT} 92 对比 · 红涨绿跌${LATEST_DELTA_DATE ? ` · 价格后小字为上次调价（${LATEST_DELTA_DATE}）调整幅度` : ''}`;
-  const sortSel = document.getElementById('sortSel'); if (sortSel) sortSel.value = FUEL;
-  const tabs = document.getElementById('fuelTabs');
-  tabs.innerHTML = FUEL_KEYS.map(k => `<button role="tab" data-k="${k}" class="tab ${k === FUEL ? 'tab-active' : ''}">${KEY[k]}</button>`).join('');
-  tabs.querySelectorAll('button').forEach(b => b.onclick = () => { FUEL = b.dataset.k; renderPrices(); });
+  const sortSel = document.getElementById('sortSel'); if (sortSel) sortSel.value = OIL;
+  const tabs = document.getElementById('oilTabs');
+  tabs.innerHTML = OIL_KEYS.map(k => `<button role="tab" data-k="${k}" class="tab ${k === OIL ? 'tab-active' : ''}">${KEY[k]}</button>`).join('');
+  tabs.querySelectorAll('button').forEach(b => b.onclick = () => { OIL = b.dataset.k; renderPrices(); });
   renderTable(); renderRank();
 }
 function filteredRows() {
   const q = (document.getElementById('q').value || '').trim();
   let rows = DATA.provinces.filter(r => !q || r.province.includes(q));
-  rows = [...rows].sort((a, b) => DESC ? b[FUEL] - a[FUEL] : a[FUEL] - b[FUEL]);
+  rows = [...rows].sort((a, b) => DESC ? b[OIL] - a[OIL] : a[OIL] - b[OIL]);
   return rows;
 }
 function renderTable() {
   if (!DATA) return;
   const rows = filteredRows();
   const cur = DATA.provinces.find(r => r.province === CURRENT);
-  for (const k of FUEL_KEYS) {
+  for (const k of OIL_KEYS) {
     const th = document.getElementById({ p92: 'thP92', p95: 'thP95', p98: 'thP98', d0: 'thD0' }[k]);
-    if (th) th.classList.toggle('text-primary', k === FUEL);
+    if (th) th.classList.toggle('text-primary', k === OIL);
   }
   if (!rows.length) {
     document.getElementById('tbody').innerHTML = '<tr><td colspan="6" class="py-10 text-center"><p class="text-sm font-medium">没有匹配的省份</p><p class="mt-1 text-xs opacity-70">换个关键词试试，例如“上海 / 广东”</p></td></tr>';
@@ -214,7 +214,7 @@ function renderTable() {
   document.getElementById('tbody').innerHTML = ordered.map(r => {
     const diff = cur ? (r.p92 - cur.p92) : null;
     const diffHtml = diff == null ? '—' : diff === 0 ? '<span class="tabular-nums opacity-70">±0.00</span>' : diff > 0 ? `<span class="font-semibold text-error tabular-nums">↑ ${diff.toFixed(2)}</span>` : `<span class="font-semibold text-success tabular-nums">↓ ${Math.abs(diff).toFixed(2)}</span>`;
-    const cell = (k) => `<td class="tabular-nums ${k === FUEL ? 'bg-primary/10 font-bold' : ''}">${fmt(r[k])}${deltaSmall(k)}</td>`;
+    const cell = (k) => `<td class="tabular-nums ${k === OIL ? 'bg-primary/10 font-bold' : ''}">${fmt(r[k])}${deltaSmall(k)}</td>`;
     const isCur = r.province === CURRENT;
     if (isCur) {
       return `<tr class="sticky top-11 z-10 bg-base-200 shadow-[0_1px_0_0_var(--color-base-300)]"><td class="font-medium">${r.province}<span class="badge badge-primary badge-soft ml-2 whitespace-nowrap">当前</span></td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}<td>${diffHtml}</td></tr>`;
@@ -223,8 +223,8 @@ function renderTable() {
   }).join('');
 }
 function renderRank() {
-  const s = [...DATA.provinces].sort((a, b) => b[FUEL] - a[FUEL]);
-  const row = (r, i) => `<div class="flex items-center justify-between py-1.5 text-sm"><span class="flex items-center gap-2"><span class="badge badge-ghost">${i + 1}</span><span>${r.province}</span></span><span class="font-semibold tabular-nums">${fmt(r[FUEL])}</span></div>`;
+  const s = [...DATA.provinces].sort((a, b) => b[OIL] - a[OIL]);
+  const row = (r, i) => `<div class="flex items-center justify-between py-1.5 text-sm"><span class="flex items-center gap-2"><span class="badge badge-ghost">${i + 1}</span><span>${r.province}</span></span><span class="font-semibold tabular-nums">${fmt(r[OIL])}</span></div>`;
   document.getElementById('topExp').innerHTML = s.slice(0, 3).map(row).join('');
   document.getElementById('topCheap').innerHTML = s.slice(-3).reverse().map(row).join('');
 }
@@ -244,7 +244,7 @@ async function load() {
   renderPrices();
 }
 document.getElementById('q').oninput = () => { renderTable(); };
-document.getElementById('sortSel').onchange = e => { FUEL = e.target.value; renderPrices(); };
+document.getElementById('sortSel').onchange = e => { OIL = e.target.value; renderPrices(); };
 document.getElementById('sortDir').onclick = e => { DESC = !DESC; e.target.textContent = DESC ? '↓ 降序' : '↑ 升序'; renderTable(); };
 registerSW();
 load();
