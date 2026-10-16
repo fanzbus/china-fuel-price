@@ -19,7 +19,7 @@ CST = timezone(timedelta(hours=8))
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 PUBLIC_DATA = ROOT / "public" / "data"
-UA = "china-fuel-price/1.0 (+https://github.com/fanzbus/china-fuel-price; weekly global sync, contact via repo)"
+UA = "oil-price/1.0 (+https://github.com/fanzbus/oil-price; weekly global sync, contact via repo)"
 
 EU_PAGE = "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en"
 FRED_GASREGW = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GASREGW"
