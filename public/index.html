@@ -55,7 +55,7 @@ canvas{width:100%;height:auto;max-height:280px}
         <div id="adjustPill" class="flex flex-wrap gap-1.5"></div>
         <div class="mt-1.5">
           <div class="flex items-center justify-between text-xs opacity-70" title="按约 14 天为一周期估算">
-            <span>本轮周期进度 · 约 14 天</span>
+            <span id="cycleLabel">本轮周期进度 · 约 14 天</span>
             <span id="cyclePct" class="font-medium tabular-nums"></span>
           </div>
           <progress id="cycleBar" class="progress progress-primary mt-1 h-1.5 w-full" value="0" max="100"></progress>
@@ -143,21 +143,37 @@ function deltaSmall(k) {
 function cycleProgress() {
   if (!DATA || !DATA.next_adjustment) return;
   const now = new Date(), t = new Date(DATA.next_adjustment);
+  const bar = document.getElementById('cycleBar');
+  const lab = document.getElementById('cyclePct');
+  const label = document.getElementById('cycleLabel');
+  if (t <= now) {
+    // 已过期：本轮已结束，不再卡 100% + 即将调整
+    if (bar) bar.value = 100;
+    if (lab) lab.textContent = '已结束';
+    if (label) label.textContent = '本轮已结束，等待源站更新';
+    return;
+  }
   const remainH = Math.max(0, (t - now) / 3600000);
   const pct = Math.min(100, Math.max(2, Math.round(100 - remainH / 336 * 100)));
-  const bar = document.getElementById('cycleBar'); if (bar) bar.value = pct;
-  const lab = document.getElementById('cyclePct'); if (lab) lab.textContent = pct + '%';
+  if (bar) bar.value = pct;
+  if (lab) lab.textContent = pct + '%';
+  if (label) label.textContent = '本轮周期进度 · 约 14 天';
 }
 function renderPrices() {
   if (!DATA) return;
   document.getElementById('metaLine').textContent = `更新于 ${fmtDateTime(DATA.fetched_at)}`;
-  document.getElementById('adjustPill').innerHTML = `<span class="badge badge-primary badge-soft whitespace-nowrap">下次调整：${DATA.next_adjustment_label || '—'}</span><span class="badge badge-ghost whitespace-nowrap">${DATA.adjustment_status || ''}</span>`;
+  const nextT = DATA.next_adjustment ? new Date(DATA.next_adjustment) : null;
+  const expired = nextT && nextT <= new Date();
+  document.getElementById('adjustPill').innerHTML = expired
+    ? `<span class="badge badge-ghost whitespace-nowrap">上次调整：${DATA.next_adjustment_label || '—'}</span><span class="badge badge-ghost whitespace-nowrap">${DATA.adjustment_status || ''}</span>`
+    : `<span class="badge badge-primary badge-soft whitespace-nowrap">下次调整：${DATA.next_adjustment_label || '—'}</span><span class="badge badge-ghost whitespace-nowrap">${DATA.adjustment_status || ''}</span>`;
   document.getElementById('interpretation').textContent = DATA.interpretation || '';
   const avg = DATA.national_avg || {};
   document.getElementById('heroP92').textContent = fmt(avg.p92);
   document.getElementById('avgGrid').innerHTML = FUEL_KEYS.map(k => `<div class="stat"><div class="stat-title text-xs">全国均价 · ${KEY[k]}</div><div class="stat-value text-2xl tabular-nums">${fmt(avg[k])}${deltaSmall(k)}</div><div class="stat-desc">元 / 升</div></div>`).join('');
   const t = new Date(DATA.next_adjustment); const now = new Date();
-  document.getElementById('countdown').textContent = DATA.next_adjustment ? `距离下次调整 ${fmtCountdown(DATA.next_adjustment)}` : '';
+  const expired2 = DATA.next_adjustment && t <= now;
+  document.getElementById('countdown').textContent = !DATA.next_adjustment ? '' : expired2 ? '源站尚未公布下次调整时间' : `距离下次调整 ${fmtCountdown(DATA.next_adjustment)}`;
   cycleProgress();
   const cur = DATA.provinces.find(r => r.province === CURRENT) || DATA.provinces[0];
   document.getElementById('currentProvinceName').textContent = cur.province;
