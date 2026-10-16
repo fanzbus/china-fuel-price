@@ -110,7 +110,7 @@
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
   <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 10月15日开始积累</span>
-  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/oil-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
 let DATA = null, FORECAST = null, GLOBAL_DATA = null, CITIES_DATA = null, CITY_PROV = '上海';
@@ -190,13 +190,13 @@ function renderPerLiter() {
   const curNow = DATA.provinces.find(r => r.province === CURRENT);
   curNameEl.textContent = CURRENT;
   if (curPred && curNow) {
-    curBody.innerHTML = FUEL_KEYS.map(k => perLiterRow(KEY[k], curNow[k], curPred[k], delta[k], range[k])).join('');
+    curBody.innerHTML = OIL_KEYS.map(k => perLiterRow(KEY[k], curNow[k], curPred[k], delta[k], range[k])).join('');
   } else {
     curBody.innerHTML = '<tr><td colspan="6" class="py-6 text-center opacity-70">暂无当前省份预测价</td></tr>';
   }
   const avgNow = DATA.national_avg || {};
   const avgPred = fc.predicted_national_avg || {};
-  avgBody.innerHTML = FUEL_KEYS.map(k => perLiterRow(KEY[k] + '（全国均价）', avgNow[k], avgPred[k], delta[k], range[k])).join('');
+  avgBody.innerHTML = OIL_KEYS.map(k => perLiterRow(KEY[k] + '（全国均价）', avgNow[k], avgPred[k], delta[k], range[k])).join('');
   allBody.innerHTML = (fc.predicted_prices || []).map(p => {
     const now = DATA.provinces.find(r => r.province === p.province);
     const cell = (k) => `<td class="tabular-nums">${fmt(p[k])} <span class="text-xs opacity-70">(${now ? fmt(now[k]) : '—'})</span></td><td>${deltaBadge(delta[k])}</td>`;
