@@ -40,7 +40,7 @@ canvas{width:100%;height:auto;max-height:280px}
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">历史走势</h2>
-      <p class="hidden text-xs opacity-70 sm:block">每次调价自动追加</p>
+      <p class="hidden text-xs opacity-70 sm:block">每次调价后自动更新</p>
     </div>
     <div class="mt-4 flex flex-wrap gap-3">
       <label class="sr-only" for="trendProvince">走势省份</label>
@@ -55,11 +55,11 @@ canvas{width:100%;height:auto;max-height:280px}
     <p id="trendNote" class="mt-2 text-xs opacity-70"></p>
     <div class="mt-5 border-t border-base-300 pt-4">
       <h3 class="text-sm font-semibold">调价日历</h3>
-      <div id="calendar" class="alert alert-info mt-2"><span>下次调整见首页；历史调价记录随每次抓取自动追加，已补全 2026 年 20 个调价点。</span></div>
+      <div id="calendar" class="alert alert-info mt-2"><span>下次调整见首页；历史调价记录随每次抓取自动更新，已补全 2026 年 20 个调价点。</span></div>
     </div>
     <div class="mt-5 border-t border-base-300 pt-4">
       <h3 class="text-sm font-semibold">历史快照 · <span id="histProvince"></span></h3>
-      <p class="mt-1 text-xs opacity-70">价格后为本次调价幅度</p>
+      <p class="mt-1 text-xs opacity-70">价格后小字为本次调价幅度</p>
       <div id="historyList" class="mt-2"></div>
       <div id="histPagination" class="mt-3 flex flex-wrap items-center justify-between gap-3"></div>
     </div>
@@ -67,7 +67,7 @@ canvas{width:100%;height:auto;max-height:280px}
 </section>
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
-  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 1月6日开始（20 个调价点，2026-10-15 为实测，其余为按调价幅度反推）</span>
+  <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a> · 仅供参考，以国家发改委官方通知为准</span>
   <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/oil-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
@@ -76,7 +76,7 @@ async function drawTrend() {
   if (!DATA) return;
   const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendOil').value || '92';
   const d = await j(`/api/trend?province=${encodeURIComponent(p)}&oil=${f}`);
-  document.getElementById('trendNote').textContent = `${p} ${KEY[OIL_CODE[f]]} · ${d.count} 个点 · 历史从 1月6日开始（20 个调价点，2026-10-15 为实测，其余为按调价幅度反推）`;
+  document.getElementById('trendNote').textContent = `${p} ${KEY[OIL_CODE[f]]}`;
   const c = document.getElementById('chart'), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
   if (!d.series.length) { ctx.fillStyle = '#94a3b8'; ctx.font = '14px sans-serif'; ctx.fillText('暂无数据', 20, 30); return; }
   const vals = d.series.map(x => x.price), mn = Math.min(...vals), mx = Math.max(...vals);
