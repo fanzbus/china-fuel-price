@@ -1,4 +1,4 @@
-# 今日油价 · china-fuel-price
+# 今日油价 · oil-price
 
 现代化汽油价格页面 + 公开 API，部署在 Cloudflare Workers，代码由 GitHub 维护。
 
@@ -45,16 +45,16 @@
 | `/forecast` | `public/forecast.html` | 预测（国际油价预测 + 每升变动 + 全球 + 城市级） |
 | `/api-docs` | `public/api-docs.html` | API 文档（Playground + OpenAPI + Webhook 说明） |
 
-顶栏省份切换（`localStorage` key `china-fuel-current-province`，默认上海）跨页持久；公共逻辑在 `public/shared.js`（主题、省份、分页、空状态）。样式用 DaisyUI v5（Tailwind v4 `@plugin "daisyui"`，主题 light/dark，与 `.dark` class 同步）。
+顶栏省份切换（`localStorage` key `oil-price-current-province`，默认上海）跨页持久；公共逻辑在 `public/shared.js`（主题、省份、分页、空状态）。样式用 DaisyUI v5（Tailwind v4 `@plugin "daisyui"`，主题 light/dark，与 `.dark` class 同步）。
 
 ## API
 
 免 Key，CORS 全开。完整定义见 `openapi.yaml` / `/openapi.yaml`。
 
 ```
-GET /api/prices[?province=上海&fuel=95]
+GET /api/prices[?province=上海&oil=95]
 GET /api/history
-GET /api/trend?province=上海&fuel=95
+GET /api/trend?province=上海&oil=95
 GET /api/meta
 GET /api/cities[?province=]
 GET /api/forecast
@@ -84,8 +84,8 @@ GitHub Actions（`.github/workflows/update-prices.yml`）：每天 02:00 UTC + �
 
 ## 部署（已上线）
 
-- 页面：https://china-fuel-price.fansys.workers.dev/
-- 仓库：https://github.com/fanzbus/china-fuel-price
+- 页面：https://oil-price.fanzy.workers.dev/
+- 仓库：https://github.com/fanzbus/oil-price
 - 部署：`npx wrangler deploy`（Cloudflare Workers，静态 + API 同服务）。改代码后重新 deploy 即可；数据由 GitHub Actions 每天 02:00 UTC 自动更新。
 
 ## 许可证
