@@ -16,7 +16,7 @@ jobs:
         run: python3 scripts/scrape.py --forecast-only
       - name: Commit if changed
         run: |
-          git config user.name "china-fuel-price-bot"
+          git config user.name "oil-price-bot"
           git config user.email "bot@example.com"
           git add data/forecast.json public/data/forecast.json
           git diff --cached --quiet || git commit -m "chore(data): update forecast $(date -u +%F-%H)"
