@@ -45,8 +45,8 @@ canvas{width:100%;height:auto;max-height:280px}
     <div class="mt-4 flex flex-wrap gap-3">
       <label class="sr-only" for="trendProvince">走势省份</label>
       <select id="trendProvince" data-province-select class="select select-bordered"></select>
-      <label class="sr-only" for="trendFuel">走势油号</label>
-      <select id="trendFuel" class="select select-bordered"><option value="92">92号</option><option value="95">95号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
+      <label class="sr-only" for="trendOil">走势油号</label>
+      <select id="trendOil" class="select select-bordered"><option value="92">92号</option><option value="95">95号</option><option value="98">98号</option><option value="0">0号柴油</option></select>
       <button id="trendBtn" class="btn btn-primary">刷新</button>
     </div>
     <div class="mt-4 rounded-xl border border-base-300 bg-base-100 p-3">
@@ -68,15 +68,15 @@ canvas{width:100%;height:auto;max-height:280px}
 </main>
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-6 text-xs opacity-70 sm:px-6">
   <span>数据来源：<a href="http://www.qiyoujiage.com/" class="font-medium underline underline-offset-2 hover:text-primary">qiyoujiage.com</a>（仅取价格数字与调价时间）· 仅供参考，以国家发改委官方通知为准 · 历史从 1月6日开始（20 个调价点，2026-10-15 为实测，其余为按调价幅度反推）</span>
-  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/china-fuel-price" class="hover:text-base-content">GitHub</a></span>
+  <span class="flex gap-3"><a href="/health" class="hover:text-base-content">状态</a><a href="https://github.com/fanzbus/oil-price" class="hover:text-base-content">GitHub</a></span>
 </footer>
 <script>
 let DATA = null, HISTORY = [], HIST_PAGE = 1;
 async function drawTrend() {
   if (!DATA) return;
-  const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendFuel').value || '92';
-  const d = await j(`/api/trend?province=${encodeURIComponent(p)}&fuel=${f}`);
-  document.getElementById('trendNote').textContent = `${p} ${KEY[FUEL_CODE[f]]} · ${d.count} 个点 · 历史从 1月6日开始（20 个调价点，2026-10-15 为实测，其余为按调价幅度反推）`;
+  const p = document.getElementById('trendProvince').value || CURRENT, f = document.getElementById('trendOil').value || '92';
+  const d = await j(`/api/trend?province=${encodeURIComponent(p)}&oil=${f}`);
+  document.getElementById('trendNote').textContent = `${p} ${KEY[OIL_CODE[f]]} · ${d.count} 个点 · 历史从 1月6日开始（20 个调价点，2026-10-15 为实测，其余为按调价幅度反推）`;
   const c = document.getElementById('chart'), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
   if (!d.series.length) { ctx.fillStyle = '#94a3b8'; ctx.font = '14px sans-serif'; ctx.fillText('暂无数据', 20, 30); return; }
   const vals = d.series.map(x => x.price), mn = Math.min(...vals), mx = Math.max(...vals);
