@@ -1,9 +1,9 @@
 {
   "status": "estimated",
   "as_of": "2026-10-16",
-  "change_rate_pct": 0.94,
+  "change_rate_pct": 0.95,
   "direction": "搁浅",
-  "estimated_adjustment_yuan_per_ton": 45.0,
+  "estimated_adjustment_yuan_per_ton": 46.0,
   "market_status": "trading",
   "market_status_note": "交易时段内",
   "confidence": "低（新周期初期滚动近似 + 代理篮子 + 系数 1.0 假设，越接近调价日越准）",
@@ -20,9 +20,9 @@
   "oil_source": "yahoo",
   "as_of_note": "Yahoo Finance 最后交易日（通常为今天或上一交易日）。",
   "brent": {
-    "latest": 109.45999908447266,
+    "latest": 109.7300033569336,
     "latest_date": "2026-10-16",
-    "avg_recent_10": 104.39,
+    "avg_recent_10": 104.42,
     "recent_range": [
       "2026-10-05",
       "2026-10-16"
@@ -32,10 +32,10 @@
       "2026-09-21",
       "2026-10-02"
     ],
-    "change_rate_pct": 1.39
+    "change_rate_pct": 1.42
   },
   "wti": {
-    "latest": 98.94000244140625,
+    "latest": 99.0199966430664,
     "latest_date": "2026-10-16",
     "avg_recent_10": 93.04,
     "recent_range": [
@@ -47,45 +47,45 @@
       "2026-09-21",
       "2026-10-02"
     ],
-    "change_rate_pct": 0.48
+    "change_rate_pct": 0.49
   },
   "fx_usd_cny": 6.702985,
   "fx_updated": "Fri, 16 Oct 2026 00:02:31 +0000",
-  "basket_usd_per_bbl": 98.71,
-  "crude_cost_cny_per_ton": 4850.0,
+  "basket_usd_per_bbl": 98.73,
+  "crude_cost_cny_per_ton": 4851.0,
   "estimated_adjustment_range": {
-    "low": 31.0,
-    "high": 58.0
+    "low": 32.0,
+    "high": 60.0
   },
   "delta_per_liter": {
     "p92": 0.033,
     "p95": 0.033,
     "p98": 0.033,
-    "d0": 0.038
+    "d0": 0.039
   },
   "delta_per_liter_range": {
     "p92": [
-      0.022,
-      0.042
+      0.023,
+      0.043
     ],
     "p95": [
-      0.022,
-      0.042
+      0.023,
+      0.043
     ],
     "p98": [
-      0.022,
-      0.042
+      0.023,
+      0.043
     ],
     "d0": [
-      0.026,
-      0.049
+      0.027,
+      0.05
     ]
   },
   "predicted_national_avg": {
     "p92": 8.695,
     "p95": 9.276,
     "p98": 10.533,
-    "d0": 8.333
+    "d0": 8.334
   },
   "predicted_prices": [
     {
