@@ -58,6 +58,50 @@ PROVINCES = ["北京", "上海", "江苏", "天津", "重庆", "江西", "辽宁
              "吉林", "云南", "湖北", "浙江", "湖南"]
 
 
+# ---- 成品油调价窗口：法定工作日表（国务院放假安排）----
+# 兜底滚动用：源站“下次调价”未及时滚动时，按 10 个法定工作日规则推算下一窗口。
+# 来源：国务院办公厅《关于2026年部分节假日安排的通知》（2025-11-04）。
+# 注意：每年新通知发布后需补当年的表；未覆盖的年份按周一至周五估算。
+CN_HOLIDAYS = {
+    # 2026 年放假日（共 33 天；落在周末的也列入，无害）
+    "2026-01-01", "2026-01-02", "2026-01-03",
+    "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19",
+    "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
+    "2026-04-04", "2026-04-05", "2026-04-06",
+    "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",
+    "2026-06-19", "2026-06-20", "2026-06-21",
+    "2026-09-25", "2026-09-26", "2026-09-27",
+    "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05",
+    "2026-10-06", "2026-10-07",
+}
+CN_WORKDAYS = {
+    # 2026 年调休上班日（周末变工作日）
+    "2026-01-04", "2026-02-14", "2026-02-28",
+    "2026-05-09", "2026-09-20", "2026-10-10",
+}
+
+
+def is_working_day(d):
+    """法定工作日：调休上班日算工作日，放假日不算，其余按周一至周五。"""
+    key = d.isoformat()
+    if key in CN_WORKDAYS:
+        return True
+    if key in CN_HOLIDAYS:
+        return False
+    return d.weekday() < 5
+
+
+def tenth_working_day_after(adj_day):
+    """上次调价日（24时日）之后的第 10 个法定工作日，即下一调价日（24时日）。"""
+    n, d = 0, adj_day + timedelta(days=1)
+    while True:
+        if is_working_day(d):
+            n += 1
+            if n == 10:
+                return d
+        d += timedelta(days=1)
+
+
 def fetch_text(url, timeout=20):
     last = None
     for attempt in range(3):  # 失败重试 2 次
@@ -461,9 +505,28 @@ def main():
                 except ValueError:
                     next_iso = None
 
+    # 过期兜底：源站“下次调价”未及时滚动时（如 10/15 24时已过、源站仍显示旧窗口），
+    # 按 10 个法定工作日规则滚动到未来窗口，避免页面长期显示过期时间。
+    # 仅处理 24时格式（源站唯一格式）；其它格式保持原行为。
+    next_rolled = False
+    if next_iso:
+        try:
+            parsed = datetime.fromisoformat(next_iso)
+            while (parsed <= now and parsed.hour == 0 and parsed.minute == 0
+                   and parsed.second == 0):
+                adj_day = (parsed - timedelta(days=1)).date()
+                nxt = tenth_working_day_after(adj_day)
+                parsed = datetime(nxt.year, nxt.month, nxt.day, tzinfo=now.tzinfo) + timedelta(days=1)
+                next_label = f"{nxt.month}月{nxt.day}日24时"
+                next_rolled = True
+            next_iso = parsed.isoformat(timespec="seconds")
+        except ValueError:
+            pass
+
     prices = {"fetched_at": fetched_at, "source": "qiyoujiage.com",
               "source_url": SOURCE_URL, "unit": "元/升",
               "next_adjustment": next_iso, "next_adjustment_label": next_label,
+              "next_adjustment_rolled": next_rolled,
               "adjustment_status": status,
               "note": "价格为事实数据，仅取数字与调价时间。历史从 2026-10-15 开始积累。",
               "provinces": provinces}
@@ -511,6 +574,7 @@ def main():
     meta.update({"fetched_at": fetched_at, "updated_at": fetched_at,
                  "source": "qiyoujiage.com", "source_url": SOURCE_URL,
                  "next_adjustment": next_iso, "next_adjustment_label": next_label,
+                 "next_adjustment_rolled": next_rolled,
                  "adjustment_status": status,
                  "history_start": meta.get("history_start", "2026-10-15")})
     if cities_result and cities_result.get("status") == "ok":
@@ -535,7 +599,7 @@ def main():
             (PUBLIC_DATA / name).write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     if hist_path.exists():
         (PUBLIC_DATA / "history.jsonl").write_text(hist_path.read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"OK fetched_at={fetched_at} provinces=31 next={next_label} status={status} changed={changed}")
+    print(f"OK fetched_at={fetched_at} provinces=31 next={next_label} status={status} changed={changed} rolled={next_rolled}")
 
 
 if __name__ == "__main__":
