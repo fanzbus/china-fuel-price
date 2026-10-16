@@ -6,7 +6,7 @@ info:
     31 省汽油柴油价格，免 Key，CORS 全开。数据来源 qiyoujiage.com，仅取价格数字与调价时间。
     历史从 2026-10-15 开始积累。未验证数据一律 no_data / pending，不编造。
 servers:
-  - url: https://china-fuel-price.fansys.workers.dev
+  - url: https://oil-price.fanzy.workers.dev
     description: 生产地址
 paths:
   /api/prices:
@@ -14,7 +14,7 @@ paths:
       summary: 全部 / 按省 / 按油号查价
       parameters:
         - {name: province, in: query, schema: {type: string}, example: 上海}
-        - {name: fuel, in: query, schema: {type: string, enum: ["92","95","98","0"]}, example: "95"}
+        - {name: oil, in: query, schema: {type: string, enum: ["92","95","98","0"]}, example: "95"}
       responses: {"200": {description: OK}}
   /api/history:
     get: {summary: 历史快照（jsonl 派生）, responses: {"200": {description: OK}}}
@@ -23,7 +23,7 @@ paths:
       summary: 某省某油号走势
       parameters:
         - {name: province, in: query, required: true, schema: {type: string}}
-        - {name: fuel, in: query, schema: {type: string, enum: ["92","95","98","0"]}}
+        - {name: oil, in: query, schema: {type: string, enum: ["92","95","98","0"]}}
       responses: {"200": {description: OK}}
   /api/meta:
     get: {summary: 元数据（下次调整、来源、校验状态）, responses: {"200": {description: OK}}}
