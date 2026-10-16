@@ -1,4 +1,4 @@
-name = "china-fuel-price"
+name = "oil-price"
 compatibility_date = "2025-01-01"
 main = "src/index.js"
 
