@@ -45,11 +45,11 @@ function avg(rows, key) {
 }
 function ruleInterpretation(meta, forecast) {
   // 规则生成，非 LLM：一句话解读
-  if (meta.adjustment_status?.includes("搁浅")) return "本次调整搁浅：调价金额未达到 50 元/吨门槛，价格维持不变（规则生成）。";
+  if (meta.adjustment_status?.includes("搁浅")) return "本次调整搁浅：调价金额未达到 50 元/吨门槛，价格维持不变。";
   if (forecast?.status === "estimated" && forecast.direction) {
-    return `按 10 工作日原油变化率规则估算，下次可能${forecast.direction}约 ${forecast.estimated_adjustment_yuan_per_ton} 元/吨，正式结果以发改委为准（规则生成）。`;
+    return `按 10 工作日原油变化率规则估算，下次可能${forecast.direction}约 ${forecast.estimated_adjustment_yuan_per_ton} 元/吨，正式结果以发改委为准。`;
   }
-  return "暂无预测数据：上游公开源未验证通过，不作预测（规则生成）。";
+  return "暂无预测数据：上游公开源未验证通过，不作预测。";
 }
 
 export default {
