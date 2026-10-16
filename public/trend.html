@@ -54,8 +54,10 @@ canvas{width:100%;height:auto;max-height:280px}
     </div>
     <p id="trendNote" class="mt-2 text-xs opacity-70"></p>
     <div class="mt-5 border-t border-base-300 pt-4">
-      <h3 class="text-sm font-semibold">调价日历</h3>
-      <div id="calendar" class="alert alert-info mt-2"><span>下次调整见首页；历史调价记录随每次抓取自动更新，已补全 2026 年 20 个调价点。</span></div>
+      <h3 class="text-sm font-semibold">调价日历 · <span id="calendarYear"></span></h3>
+      <p class="mt-1 text-xs opacity-70">下次调整见首页 · 调价日按状态着色</p>
+      <div id="calendar" class="mt-3"></div>
+      <div class="mt-3 flex flex-wrap gap-3 text-xs"><span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm bg-error"></span>上调</span><span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm bg-success"></span>下调</span><span class="flex items-center gap-1"><span class="inline-block h-3 w-3 rounded-sm bg-base-300"></span>搁浅</span></div>
     </div>
     <div class="mt-5 border-t border-base-300 pt-4">
       <h3 class="text-sm font-semibold">历史快照 · <span id="histProvince"></span></h3>
@@ -85,6 +87,39 @@ async function drawTrend() {
   ctx.beginPath(); d.series.forEach((x, i) => { const X = 40 + i * (800 / Math.max(1, d.series.length - 1)), Y = 230 - ((x.price - mn) / ((mx - mn) || 1)) * 200; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
   ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2; ctx.stroke();
   d.series.forEach((x, i) => { const X = 40 + i * (800 / Math.max(1, d.series.length - 1)), Y = 230 - ((x.price - mn) / ((mx - mn) || 1)) * 200; ctx.beginPath(); ctx.arc(X, Y, 4, 0, 7); ctx.fillStyle = '#1d4ed8'; ctx.fill(); ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif'; ctx.fillText(x.price.toFixed(2), X - 10, Y - 10); });
+}
+function renderCalendar() {
+  const box = document.getElementById('calendar');
+  if (!box) return;
+  if (!HISTORY.length) { box.innerHTML = '<div class="alert alert-info"><span>暂无调价记录。</span></div>'; return; }
+  // 年度：取 HISTORY 中最新一条的年份
+  const year = new Date(HISTORY[HISTORY.length - 1].fetched_at).getFullYear();
+  document.getElementById('calendarYear').textContent = year + ' 年';
+  const adj = {};
+  HISTORY.forEach(s => {
+    const d = new Date(s.fetched_at);
+    if (d.getFullYear() !== year) return;
+    const key = `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const st = (s.adjustment_status || '').includes('上调') ? '上调' : (s.adjustment_status || '').includes('下调') ? '下调' : '搁浅';
+    adj[key] = st;
+  });
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    const firstWeekday = new Date(year, m, 1).getDay();
+    let cells = '';
+    for (let i = 0; i < firstWeekday; i++) cells += '<span></span>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const st = adj[key];
+      const cls = st === '上调' ? 'bg-error text-white font-bold' : st === '下调' ? 'bg-success text-white font-bold' : st === '搁浅' ? 'bg-base-300 font-medium' : 'text-base-content';
+      const title = st ? ` title="${st}"` : '';
+      cells += `<span class="flex h-7 items-center justify-center rounded-md text-xs tabular-nums ${cls}"${title}>${day}</span>`;
+    }
+    months.push(`<div class="rounded-xl border border-base-300 bg-base-100 p-3"><p class="mb-2 text-center text-sm font-semibold">${m + 1}月</p><div class="grid grid-cols-7 gap-1 text-center text-[11px] opacity-60">${weekDays.map(w => `<span>${w}</span>`).join('')}</div><div class="mt-1 grid grid-cols-7 gap-1">${cells}</div></div>`);
+  }
+  box.innerHTML = `<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">${months.join('')}</div>`;
 }
 function renderHistory() {
   const list = document.getElementById('historyList');
@@ -124,7 +159,7 @@ async function load() {
   populateProvinceSelect(document.getElementById('topProvince'), provs);
   populateProvinceSelect(document.getElementById('trendProvince'), provs);
   initProvinceSwitcher(() => { drawTrend(); renderHistory(); });
-  drawTrend(); renderHistory();
+  drawTrend(); renderHistory(); renderCalendar();
 }
 document.getElementById('trendBtn').onclick = () => { drawTrend(); renderHistory(); };
 document.getElementById('trendProvince').onchange = () => { drawTrend(); renderHistory(); };
