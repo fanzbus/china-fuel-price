@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 PUBLIC_DATA = ROOT / "public" / "data"
 SOURCE_URL = "http://www.qiyoujiage.com/"
-UA = "china-fuel-price/1.0 (+https://github.com/fanzbus/china-fuel-price; daily sync, contact via repo)"
+UA = "oil-price/1.0 (+https://github.com/fanzbus/oil-price; daily sync, contact via repo)"
 
 PROVINCES = ["北京", "上海", "江苏", "天津", "重庆", "江西", "辽宁", "安徽", "内蒙古",
              "福建", "宁夏", "甘肃", "青海", "广东", "山东", "广西", "山西", "贵州",
@@ -163,7 +163,7 @@ PROVINCE_PINYIN = {
 }
 NON_UNIFIED = ["云南", "陕西", "四川", "辽宁", "新疆", "青海", "西藏", "贵州", "内蒙古", "黑龙江"]
 CITY_PRICE_RE = re.compile(r"<dt>[^<]*?(92#|95#|98#|0#)[^<]*</dt>\s*<dd>([\d.]+)</dd>")
-CITY_FUEL_KEY = {"92#": "p92", "95#": "p95", "98#": "p98", "0#": "d0"}
+CITY_OIL_KEY = {"92#": "p92", "95#": "p95", "98#": "p98", "0#": "d0"}
 
 
 def parse_city_list(html, prov_pinyin):
@@ -186,7 +186,7 @@ def parse_city_prices(html):
     out = {}
     for m in CITY_PRICE_RE.finditer(html):
         try:
-            out[CITY_FUEL_KEY[m.group(1)]] = float(m.group(2))
+            out[CITY_OIL_KEY[m.group(1)]] = float(m.group(2))
         except ValueError:
             continue
     return out
