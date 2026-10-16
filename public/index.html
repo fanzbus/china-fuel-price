@@ -80,7 +80,7 @@ canvas{width:100%;height:auto;max-height:280px}
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">查询与排行</h2>
-      <p class="hidden text-xs opacity-70 sm:block" id="diffHint">价差以与当前省份 92 对比 · 红涨绿跌</p>
+      <p class="hidden text-xs opacity-70 sm:block" id="diffHint">价差以与当前省份 92 对比</p>
     </div>
     <div class="mt-4 flex flex-col gap-3 md:flex-row">
       <label class="input input-bordered flex flex-1 items-center gap-2">
@@ -179,7 +179,7 @@ function renderPrices() {
   document.getElementById('currentProvinceName').textContent = cur.province;
   document.getElementById('currentProvincePrices').innerHTML = OIL_KEYS.map(k => `<div><p class="text-xs opacity-70">${KEY[k]}</p><p class="mt-0.5 text-xl font-bold tracking-tight tabular-nums">${fmt(cur[k])}${deltaSmall(k)}</p></div>`).join('');
   const dh = document.getElementById('diffHeader'); if (dh) dh.textContent = `与${CURRENT} 92 价差`;
-  const hint = document.getElementById('diffHint'); if (hint) hint.textContent = `价差以与${CURRENT} 92 对比 · 红涨绿跌${LATEST_DELTA_DATE ? ` · 价格后小字为上次调价（${LATEST_DELTA_DATE}）调整幅度` : ''}`;
+  const hint = document.getElementById('diffHint'); if (hint) hint.textContent = `价差以与${CURRENT} 92 对比${LATEST_DELTA_DATE ? ` · 价格后为上次调价（${LATEST_DELTA_DATE}）调整幅度` : ''}`;
   const sortSel = document.getElementById('sortSel'); if (sortSel) sortSel.value = OIL;
   const tabs = document.getElementById('oilTabs');
   tabs.innerHTML = OIL_KEYS.map(k => `<button role="tab" data-k="${k}" class="tab ${k === OIL ? 'tab-active' : ''}">${KEY[k]}</button>`).join('');
