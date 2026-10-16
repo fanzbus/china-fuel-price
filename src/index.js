@@ -1,4 +1,4 @@
-/* china-fuel-price Worker：API + 静态页（ASSETS）。
+/* oil-price Worker：API + 静态页（ASSETS）。
    数据事实唯一来源：qiyoujiage.com 首页 31 省表。未验证数据一律 no_data/pending，不编造。 */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -6,8 +6,8 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
   "Cache-Control": "public, max-age=300",
 };
-const FUEL_KEYS = { 92: "p92", 95: "p95", 98: "p98", 0: "d0", "92": "p92", "95": "p95", "98": "p98", "0": "d0" };
-const FUEL_LABEL = { p92: "92号汽油", p95: "95号汽油", p98: "98号汽油", d0: "0号柴油" };
+const OIL_KEYS = { 92: "p92", 95: "p95", 98: "p98", 0: "d0", "92": "p92", "95": "p95", "98": "p98", "0": "d0" };
+const OIL_LABEL = { p92: "92号汽油", p95: "95号汽油", p98: "98号汽油", d0: "0号柴油" };
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -32,10 +32,10 @@ function filterPrices(prices, search) {
   let rows = [...(prices.provinces || [])];
   const province = search.get("province");
   if (province) rows = rows.filter((r) => r.province === province || r.province.includes(province));
-  const fuel = search.get("fuel");
-  if (fuel && FUEL_KEYS[fuel]) {
-    const k = FUEL_KEYS[fuel];
-    rows = rows.map((r) => ({ province: r.province, fuel: FUEL_LABEL[k], price: r[k], unit: "元/升" }));
+  const oil = search.get("oil");
+  if (oil && OIL_KEYS[oil]) {
+    const k = OIL_KEYS[oil];
+    rows = rows.map((r) => ({ province: r.province, oil: OIL_LABEL[k], price: r[k], unit: "元/升" }));
   }
   return { ...prices, count: rows.length, provinces: rows };
 }
@@ -58,7 +58,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     try {
       if (url.pathname === "/health") {
-        return json({ status: "ok", service: "china-fuel-price", time: new Date().toISOString() });
+        return json({ status: "ok", service: "oil-price", time: new Date().toISOString() });
       }
       if (url.pathname === "/api/prices") {
         const prices = await loadJson(env, url, "prices.json");
@@ -99,13 +99,13 @@ export default {
         const raw = await loadText(env, url, "history.jsonl");
         const rows = raw.trim() ? raw.trim().split("\n").map((l) => JSON.parse(l)) : [];
         const province = url.searchParams.get("province") || "";
-        const fuel = url.searchParams.get("fuel") || "95";
-        const key = FUEL_KEYS[fuel] || "p95";
+        const oil = url.searchParams.get("oil") || "95";
+        const key = OIL_KEYS[oil] || "p95";
         const series = rows.map((s) => {
           const hit = (s.provinces || []).find((r) => r.province === province);
           return { date: (s.fetched_at || "").slice(0, 10), fetched_at: s.fetched_at, price: hit ? hit[key] : null };
         }).filter((x) => x.price !== null);
-        return json({ province, fuel: FUEL_LABEL[key], history_start: "2026-01-06", count: series.length, series });
+        return json({ province, oil: OIL_LABEL[key], history_start: "2026-01-06", count: series.length, series });
       }
       if (url.pathname === "/api/export.csv") {
         const prices = await loadJson(env, url, "prices.json");
