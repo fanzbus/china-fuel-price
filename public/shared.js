@@ -1,9 +1,9 @@
 /* 共享逻辑：主题（.dark class + DaisyUI data-theme 同步）、省份（localStorage）、分页、空状态。
    各页引入 shared.js 后，再写本页的 render 函数；省份切换时调用 window.onProvinceChange（各页定义）。 */
 const KEY = { p92: '92号汽油', p95: '95号汽油', p98: '98号汽油', d0: '0号柴油' };
-const FUEL_KEYS = ['p92', 'p95', 'p98', 'd0'];
-const FUEL_CODE = { 92: 'p92', 95: 'p95', 98: 'p98', 0: 'd0' };
-const PROVINCE_KEY = 'china-fuel-current-province';
+const OIL_KEYS = ['p92', 'p95', 'p98', 'd0'];
+const OIL_CODE = { 92: 'p92', 95: 'p95', 98: 'p98', 0: 'd0' };
+const PROVINCE_KEY = 'oil-price-current-province';
 const PAGE_SIZE = 10;
 let CURRENT = '上海';
 
@@ -42,7 +42,12 @@ function fmtCountdown(target) {
   return hours ? `约 ${days} 天 ${hours} 小时后` : `约 ${days} 天后`;
 }
 function getCurrentProvince() {
-  try { const v = localStorage.getItem(PROVINCE_KEY); if (v) return v; } catch (e) {}
+  try {
+    const v = localStorage.getItem(PROVINCE_KEY); if (v) return v;
+    // 迁移旧 key：china-fuel-current-province → oil-price-current-province
+    const old = localStorage.getItem('china-fuel-current-province');
+    if (old) { localStorage.setItem(PROVINCE_KEY, old); localStorage.removeItem('china-fuel-current-province'); return old; }
+  } catch (e) {}
   return '上海';
 }
 function applyTheme(dark) {
