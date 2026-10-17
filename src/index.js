@@ -51,6 +51,20 @@ function ruleInterpretation(meta, forecast) {
   }
   return "暂无预测数据：上游公开源未验证通过，不作预测。";
 }
+function ruleTrendInterpretation(meta, forecast, provinceRow, nationalAvg) {
+  // 规则兜底的趋势版：现状 + 国际油价趋势 + 下次预测 + 建议，全用已验证数字
+  if (!forecast || forecast.status !== "estimated") {
+    return ruleInterpretation(meta, forecast);
+  }
+  const b = forecast.brent || {}, w = forecast.wti || {};
+  const fmtSignedPct = (v) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v}%`);
+  const delta92 = forecast.delta_per_liter?.p92;
+  const trend = `国际油价趋势：Brent 近 10 日均值 ${b.avg_recent_10} 美元/桶（前 10 日 ${b.avg_prev_10}，${fmtSignedPct(b.change_rate_pct)}），WTI 近 10 日均值 ${w.avg_recent_10} 美元/桶（前 10 日 ${w.avg_prev_10}，${fmtSignedPct(w.change_rate_pct)}），合成变化率 ${fmtSignedPct(forecast.change_rate_pct)}。`;
+  const pred = `下次调价预测：${forecast.direction}约 ${forecast.estimated_adjustment_yuan_per_ton} 元/吨（区间 ${forecast.estimated_adjustment_range?.low} ~ ${forecast.estimated_adjustment_range?.high} 元/吨），每升约 ${delta92 == null ? "—" : `${delta92 > 0 ? "+" : ""}${delta92}`} 元，正式结果以发改委为准。`;
+  const cur = provinceRow ? `${provinceRow.province} 92 号 ${provinceRow.p92} 元/升，全国均价 92 号 ${nationalAvg?.p92} 元/升。` : "";
+  const advice = forecast.direction === "上调" ? "油价可能上涨，急用可提前加。" : forecast.direction === "下调" ? "油价可能下跌，不急可等下次调整后再加。" : "预计搁浅，价格维持不变，按需加油即可。";
+  return `${cur}${trend}${pred}${advice}`;
+}
 
 // ---- AI 解读：Workers AI（免费额度）+ 数字守门 + 规则兜底 ----
 // 原则：AI 只负责把已验证的数字组织成自然语言，不许编新数字。
@@ -72,7 +86,7 @@ function collectAllowedNumbers(facts) {
   return nums;
 }
 function aiNumbersPass(text, facts) {
-  if (!text || text.length > 600) return false;
+  if (!text || text.length > 900) return false;
   const allowed = collectAllowedNumbers(facts);
   const generic = new Set([0, 10, 40, 50, 92, 95, 98, 130, 1380, 1190, 7.33, 2026, 2025]);
   const re = /\d+(?:\.\d+)?/g;
@@ -95,7 +109,7 @@ function cleanAiText(raw) {
   let t = String(raw).replace(/<think>[\s\S]*?<\/think>/g, "").replace(/[*#`>]/g, "").replace(/\n+/g, " ").trim();
   // 去掉模型可能带的前缀
   t = t.replace(/^(解读[:：]|AI 解读[:：])/, "").trim();
-  if (t.length > 400) t = t.slice(0, 400);
+  if (t.length > 600) t = t.slice(0, 600);
   return t;
 }
 async function aiInterpretation(env, request, facts, ruleText) {
@@ -107,11 +121,11 @@ async function aiInterpretation(env, request, facts, ruleText) {
     data_as_of: { prices_fetched_at: facts.prices_fetched_at, forecast_as_of: facts.forecast_as_of },
     interpretation: ruleText,
     facts_used: facts,
-    disclaimer: "AI 解读仅把已验证数据组织成自然语言，不产生新预测；正式结果以国家发改委官方通知为准。",
+    disclaimer: "AI 解读仅把已验证数据组织成自然语言，趋势与预测均来自规则估算（10 工作日原油变化率 + 50 元/吨门槛），不产生新预测；正式结果以国家发改委官方通知为准。",
     fallback_reason: null,
   };
   if (!env.AI?.run) return { ...base, fallback_reason: "no_ai_binding" };
-  const system = "你是今日油价站的解读助手。只用用户给定的数字，不编造、不推测任何新数字、不编造日期和油价。数字必须原样照抄，禁止四舍五入、禁止改写（例如 8.662 就写 8.662，不要写成 8.66 或 8.6）。油号叫法：p92=92号汽油，p95=95号汽油，p98=98号汽油，d0=0号柴油（不要叫 0汽油）。输出 2-3 句中文，约 150 字：先说当前省份与全国均价现状，再说下次调价预测（方向、元/吨、每升变动），最后给一句加油建议（可等/可加/影响不大）。不要输出 Markdown、不要列数字表格、不要重复公式。";
+  const system = "你是今日油价站的解读助手。只用用户给定的数字，不编造、不推测任何新数字、不编造日期和油价。数字必须原样照抄，禁止四舍五入、禁止改写（例如 8.662 就写 8.662，不要写成 8.66 或 8.6）。油号叫法：p92=92号汽油，p95=95号汽油，p98=98号汽油，d0=0号柴油（不要叫 0汽油）。若 forecast_status 不是 estimated，只说现状 + 暂无预测，不要编趋势。输出 4 段中文，约 250 字，每段 1-2 句：1）现状：当前省份与全国均价；2）国际油价趋势：Brent 近 10 日均值 vs 前 10 日均值及各自变化率，WTI 同理，再说合成变化率，指出谁涨谁跌、谁主导；3）下次调价预测：方向、元/吨、区间、每升变动、当前省份预测价，并注明置信度与“越接近调价日越准”；4）加油建议：上调则可提前加、下调则可等、搁浅则按需加。不要输出 Markdown、不要列数字表格、不要重复公式、不要编造置信度以外的判断。";
   const user = `事实（只许用这些数字）：${JSON.stringify(facts)}。规则解读参考：${ruleText}`;
   // 守门失败时重试一次（temperature 0 + 更严指令），仍失败则回退规则解读
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -121,7 +135,7 @@ async function aiInterpretation(env, request, facts, ruleText) {
           { role: "system", content: attempt === 0 ? system : system + "再次强调：数字原样照抄，任何数字都不能改写。"},
           { role: "user", content: user },
         ],
-        max_tokens: 400,
+        max_tokens: 600,
         temperature: attempt === 0 ? 0.2 : 0,
       });
       const raw = res?.response ?? res?.result?.response ?? res?.choices?.[0]?.message?.content ?? res?.result?.choices?.[0]?.message?.content ?? "";
@@ -180,6 +194,15 @@ export default {
           p92: avg(prices.provinces, "p92"), p95: avg(prices.provinces, "p95"),
           p98: avg(prices.provinces, "p98"), d0: avg(prices.provinces, "d0"),
         };
+        // 历史：最近一次有调价幅度的快照，用于趋势上下文（失败则为空，不阻塞）
+        let historyLast = null;
+        try {
+          const rawHist = await loadText(env, url, "history.jsonl");
+          const snaps = rawHist.trim() ? rawHist.trim().split("\n").map((l) => JSON.parse(l)) : [];
+          const hit = [...snaps].reverse().find((s) => s.delta && (s.delta.p92 || s.delta.p95 || s.delta.p98 || s.delta.d0));
+          if (hit) historyLast = { date: (hit.fetched_at || "").slice(0, 10), delta: hit.delta };
+        } catch (e) { /* ignore */ }
+        const predRow = (forecast.predicted_prices || []).find((p) => p.province === (row.province || province)) || null;
         const facts = {
           province: row.province || province,
           province_prices: { p92: row.p92, p95: row.p95, p98: row.p98, d0: row.d0 },
@@ -194,11 +217,32 @@ export default {
           estimated_range: forecast.estimated_adjustment_range || null,
           change_rate_pct: forecast.change_rate_pct ?? null,
           delta_per_liter: forecast.delta_per_liter || null,
+          delta_per_liter_range: forecast.delta_per_liter_range || null,
+          brent: forecast.brent ? {
+            latest: forecast.brent.latest ?? null, latest_date: forecast.brent.latest_date ?? null,
+            avg_recent_10: forecast.brent.avg_recent_10 ?? null, avg_prev_10: forecast.brent.avg_prev_10 ?? null,
+            change_rate_pct: forecast.brent.change_rate_pct ?? null,
+            recent_range: forecast.brent.recent_range || null, prev_range: forecast.brent.prev_range || null,
+          } : null,
+          wti: forecast.wti ? {
+            latest: forecast.wti.latest ?? null, latest_date: forecast.wti.latest_date ?? null,
+            avg_recent_10: forecast.wti.avg_recent_10 ?? null, avg_prev_10: forecast.wti.avg_prev_10 ?? null,
+            change_rate_pct: forecast.wti.change_rate_pct ?? null,
+            recent_range: forecast.wti.recent_range || null, prev_range: forecast.wti.prev_range || null,
+          } : null,
           brent_avg_recent_10: forecast.brent?.avg_recent_10 ?? null,
           wti_avg_recent_10: forecast.wti?.avg_recent_10 ?? null,
           fx_usd_cny: forecast.fx_usd_cny ?? null,
+          basket_usd_per_bbl: forecast.basket_usd_per_bbl ?? null,
+          crude_cost_cny_per_ton: forecast.crude_cost_cny_per_ton ?? null,
+          oil_source: forecast.oil_source || null,
+          market_status: forecast.market_status || null,
+          confidence: forecast.confidence || null,
+          predicted_province_prices: predRow ? { p92: predRow.p92, p95: predRow.p95, p98: predRow.p98, d0: predRow.d0 } : null,
+          predicted_national_avg: forecast.predicted_national_avg || null,
+          history_last_adjustment: historyLast,
         };
-        const ruleText = ruleInterpretation({ ...meta, adjustment_status: facts.adjustment_status }, forecast);
+        const ruleText = ruleTrendInterpretation({ ...meta, adjustment_status: facts.adjustment_status }, forecast, row, nationalAvg);
         const out = await aiInterpretation(env, request, facts, ruleText);
         out.cached = false;
         // 只缓存 AI 成功的结果；规则兜底不缓存，下次请求可重试 AI
