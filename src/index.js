@@ -139,7 +139,15 @@ async function aiInterpretation(env, request, facts, ruleText) {
         temperature: attempt === 0 ? 0.2 : 0,
       });
       const raw = res?.response ?? res?.result?.response ?? res?.choices?.[0]?.message?.content ?? res?.result?.choices?.[0]?.message?.content ?? "";
-      const text = cleanAiText(raw);
+      let text = cleanAiText(raw);
+      // 有预测时模型偶发口误“暂无预测”（与搁浅矛盾），直接删掉该短语，不整段丢弃；
+      // 无预测时若没说暂无预测，反而可能编了方向词，守门（只查数字）拦不住，整段回退
+      if (facts.forecast_status === "estimated") {
+        text = text.replace(/，?暂无预测[。]?/g, "").replace(/，?无预测数据[。]?/g, "").replace(/，{2,}/g, "，").trim();
+      } else if (text && !text.includes("暂无预测")) {
+        if (attempt === 0) continue;
+        return { ...base, fallback_reason: "no_data_but_predicted" };
+      }
       if (!text || text.length < 20) {
         if (attempt === 0) continue;
         return { ...base, fallback_reason: "empty_ai_output" };
