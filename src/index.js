@@ -52,6 +52,83 @@ function ruleInterpretation(meta, forecast) {
   return "暂无预测数据：上游公开源未验证通过，不作预测。";
 }
 
+// ---- AI 解读：Workers AI（免费额度）+ 数字守门 + 规则兜底 ----
+// 原则：AI 只负责把已验证的数字组织成自然语言，不许编新数字。
+// 数字守门：AI 文本里出现的每个数字，必须能在 facts 里找到（±0.02 容差）
+// 或属于通用白名单（50 元/吨门槛、40/130 地板天花板、10 工作日、油号、日期）。
+// 守门失败 / AI 报错 / 配额耗尽 / 无 AI 绑定 -> 回退规则解读，source=rule，绝不返回编造文本。
+const AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const AI_CACHE_TTL = 3600;
+function collectAllowedNumbers(facts) {
+  const nums = [];
+  const walk = (v) => {
+    if (typeof v === "number" && Number.isFinite(v)) nums.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(facts);
+  return nums;
+}
+function aiNumbersPass(text, facts) {
+  if (!text || text.length > 600) return false;
+  const allowed = collectAllowedNumbers(facts);
+  const generic = new Set([0, 10, 40, 50, 92, 95, 98, 130, 1380, 1190, 7.33, 2026, 2025]);
+  const re = /\d+(?:\.\d+)?/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const n = parseFloat(m[0]);
+    if (generic.has(n)) continue;
+    // 仅当数字紧贴 年/月/日/时 才当作日期放行，避免“30 元/吨”这类编造借日期通道漏网
+    const prev = text[m.index - 1] || "";
+    const next = text[m.index + m[0].length] || "";
+    if (Number.isInteger(n) && ["年", "月", "日", "时"].includes(next)) continue;
+    if (Number.isInteger(n) && ["年", "月"].includes(prev)) continue;
+    if (!allowed.some((a) => Math.abs(a - n) <= 0.02)) return false;
+  }
+  return true;
+}
+function cleanAiText(raw) {
+  if (!raw) return "";
+  let t = String(raw).replace(/[*#`>]/g, "").replace(/\n+/g, " ").trim();
+  // 去掉模型可能带的前缀
+  t = t.replace(/^(解读[:：]|AI 解读[:：])/, "").trim();
+  if (t.length > 400) t = t.slice(0, 400);
+  return t;
+}
+async function aiInterpretation(env, request, facts, ruleText) {
+  const base = {
+    source: "rule",
+    model: null,
+    province: facts.province,
+    generated_at: new Date().toISOString(),
+    data_as_of: { prices_fetched_at: facts.prices_fetched_at, forecast_as_of: facts.forecast_as_of },
+    interpretation: ruleText,
+    facts_used: facts,
+    disclaimer: "AI 解读仅把已验证数据组织成自然语言，不产生新预测；正式结果以国家发改委官方通知为准。",
+    fallback_reason: null,
+  };
+  if (!env.AI?.run) return { ...base, fallback_reason: "no_ai_binding" };
+  const system = "你是今日油价站的解读助手。只用用户给定的数字，不编造、不推测任何新数字、不编造日期和油价。输出 2-3 句中文，约 150 字：先说当前省份与全国均价现状，再说下次调价预测（方向、元/吨、每升变动），最后给一句加油建议（可等/可加/影响不大）。不要输出 Markdown、不要列数字表格、不要重复公式。";
+  const user = `事实（只许用这些数字）：${JSON.stringify(facts)}。规则解读参考：${ruleText}`;
+  try {
+    const res = await env.AI.run(AI_MODEL, {
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      max_tokens: 300,
+      temperature: 0.2,
+    });
+    const raw = res?.response ?? res?.result?.response ?? "";
+    const text = cleanAiText(raw);
+    if (!text || text.length < 20) return { ...base, fallback_reason: "empty_ai_output" };
+    if (!aiNumbersPass(text, facts)) return { ...base, fallback_reason: "number_guard_failed" };
+    return { ...base, source: "workers-ai", model: AI_MODEL, interpretation: text, fallback_reason: null };
+  } catch (e) {
+    return { ...base, fallback_reason: `ai_error:${String(e?.message || e).slice(0, 80)}` };
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -71,6 +148,54 @@ export default {
       }
       if (url.pathname === "/api/meta") return json(await loadJson(env, url, "meta.json"));
       if (url.pathname === "/api/forecast") return json(await loadJson(env, url, "forecast.json"));
+      if (url.pathname === "/api/ai-interpretation") {
+        // 缓存 1 小时：同一省份 1 小时内只调一次 Workers AI，省免费额度
+        const cache = caches.default;
+        const cacheKey = new Request(request.url, { method: "GET" });
+        const hit = await cache.match(cacheKey).catch(() => null);
+        if (hit) {
+          const body = await hit.json().catch(() => null);
+          if (body) return json({ ...body, cached: true });
+        }
+        const prices = await loadJson(env, url, "prices.json");
+        const meta = await loadJson(env, url, "meta.json");
+        const forecast = await loadJson(env, url, "forecast.json").catch(() => ({}));
+        const province = url.searchParams.get("province") || "上海";
+        const row = prices.provinces.find((r) => r.province === province) || prices.provinces.find((r) => r.province === "上海") || {};
+        const nationalAvg = {
+          p92: avg(prices.provinces, "p92"), p95: avg(prices.provinces, "p95"),
+          p98: avg(prices.provinces, "p98"), d0: avg(prices.provinces, "d0"),
+        };
+        const facts = {
+          province: row.province || province,
+          province_prices: { p92: row.p92, p95: row.p95, p98: row.p98, d0: row.d0 },
+          national_avg: nationalAvg,
+          prices_fetched_at: prices.fetched_at,
+          next_adjustment_label: prices.next_adjustment_label || meta.next_adjustment_label,
+          adjustment_status: prices.adjustment_status || meta.adjustment_status,
+          forecast_status: forecast.status || "no_data",
+          forecast_as_of: forecast.as_of || null,
+          forecast_direction: forecast.direction || null,
+          estimated_adjustment_yuan_per_ton: forecast.estimated_adjustment_yuan_per_ton ?? null,
+          estimated_range: forecast.estimated_adjustment_range || null,
+          change_rate_pct: forecast.change_rate_pct ?? null,
+          delta_per_liter: forecast.delta_per_liter || null,
+          brent_avg_recent_10: forecast.brent?.avg_recent_10 ?? null,
+          wti_avg_recent_10: forecast.wti?.avg_recent_10 ?? null,
+          fx_usd_cny: forecast.fx_usd_cny ?? null,
+        };
+        const ruleText = ruleInterpretation({ ...meta, adjustment_status: facts.adjustment_status }, forecast);
+        const out = await aiInterpretation(env, request, facts, ruleText);
+        out.cached = false;
+        // 只缓存 AI 成功的结果；规则兜底不缓存，下次请求可重试 AI
+        if (out.source === "workers-ai") {
+          const toCache = new Response(JSON.stringify(out), {
+            headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${AI_CACHE_TTL}` },
+          });
+          await cache.put(cacheKey, toCache).catch(() => {});
+        }
+        return json(out);
+      }
       if (url.pathname === "/api/global") return json(await loadJson(env, url, "global.json"));
       if (url.pathname === "/api/cities") {
         const cities = await loadJson(env, url, "cities.json");
