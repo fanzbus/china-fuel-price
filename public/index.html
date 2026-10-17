@@ -74,7 +74,7 @@ canvas{width:100%;height:auto;max-height:280px}
     <p id="interpretation" class="mt-5 border-t border-base-300 pt-4 text-sm leading-relaxed opacity-80"></p>
     <div id="aiCard" class="mt-4 rounded-xl border border-base-300 bg-base-100 p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <p class="text-sm font-semibold">AI 解读 · 国际油价趋势预测</p>
+        <p class="text-sm font-semibold">AI 解读 · 国际油价趋势预测 <span id="aiTime" class="ml-1 text-xs font-normal opacity-70"></span></p>
         <span id="aiBadge"><span class="badge badge-ghost whitespace-nowrap">加载中…</span></span>
       </div>
       <div id="aiTrendChips" class="mt-2 flex flex-wrap gap-1.5"></div>
@@ -271,12 +271,13 @@ async function renderAi() {
     }
     chipsEl.innerHTML = chips.join('') || '<span class="text-xs opacity-70">暂无预测数据</span>';
     textEl.textContent = d.interpretation || '';
-    metaEl.textContent = d.source === 'workers-ai'
-      ? `模型 ${d.model || ''} · 生成于 ${fmtDateTime(d.generated_at)}${d.cached ? ' · 缓存' : ''} · ${d.disclaimer || ''}`
-      : 'AI 暂不可用时自动回退规则解读，内容仍只用已验证数据';
+    const timeEl = document.getElementById('aiTime');
+    if (timeEl && d.generated_at) timeEl.textContent = `解读时间：${fmtDateTime(d.generated_at)}`;
+    metaEl.textContent = 'AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。';
   } catch (e) {
     textEl.textContent = 'AI 解读暂不可用，下方价格表仍可查看。';
     badgeEl.innerHTML = '<span class="badge badge-ghost whitespace-nowrap">暂不可用</span>';
+    metaEl.textContent = 'AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。';
   }
 }
 async function load() {
