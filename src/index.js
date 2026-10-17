@@ -57,7 +57,9 @@ function ruleInterpretation(meta, forecast) {
 // 数字守门：AI 文本里出现的每个数字，必须能在 facts 里找到（±0.02 容差）
 // 或属于通用白名单（50 元/吨门槛、40/130 地板天花板、10 工作日、油号、日期）。
 // 守门失败 / AI 报错 / 配额耗尽 / 无 AI 绑定 -> 回退规则解读，source=rule，绝不返回编造文本。
-const AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+// 注：曾用 @cf/qwen/qwen3-30b-a3b-fp8，线上实测返回空（Qwen3 默认思考模式把 token 耗在思考里，
+// max_tokens 300 内出不了正文），改用无思考模式的 Llama 3.1 8B fp8-fast。
 const AI_CACHE_TTL = 3600;
 function collectAllowedNumbers(facts) {
   const nums = [];
@@ -89,7 +91,7 @@ function aiNumbersPass(text, facts) {
 }
 function cleanAiText(raw) {
   if (!raw) return "";
-  let t = String(raw).replace(/[*#`>]/g, "").replace(/\n+/g, " ").trim();
+  let t = String(raw).replace(/<think>[\s\S]*?<\/think>/g, "").replace(/[*#`>]/g, "").replace(/\n+/g, " ").trim();
   // 去掉模型可能带的前缀
   t = t.replace(/^(解读[:：]|AI 解读[:：])/, "").trim();
   if (t.length > 400) t = t.slice(0, 400);
@@ -116,10 +118,10 @@ async function aiInterpretation(env, request, facts, ruleText) {
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      max_tokens: 300,
+      max_tokens: 400,
       temperature: 0.2,
     });
-    const raw = res?.response ?? res?.result?.response ?? "";
+    const raw = res?.response ?? res?.result?.response ?? res?.choices?.[0]?.message?.content ?? res?.result?.choices?.[0]?.message?.content ?? "";
     const text = cleanAiText(raw);
     if (!text || text.length < 20) return { ...base, fallback_reason: "empty_ai_output" };
     if (!aiNumbersPass(text, facts)) return { ...base, fallback_reason: "number_guard_failed" };
