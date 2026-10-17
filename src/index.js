@@ -85,7 +85,8 @@ function aiNumbersPass(text, facts) {
     const next = text[m.index + m[0].length] || "";
     if (Number.isInteger(n) && ["年", "月", "日", "时"].includes(next)) continue;
     if (Number.isInteger(n) && ["年", "月"].includes(prev)) continue;
-    if (!allowed.some((a) => Math.abs(a - n) <= 0.02)) return false;
+    // 容差：max(0.03, 1%)，允许 8.662→8.66 这类照抄级四舍五入，仍拦截 9.99 这类编造
+    if (!allowed.some((a) => Math.abs(a - n) <= Math.max(0.03, Math.abs(a) * 0.01))) return false;
   }
   return true;
 }
@@ -110,25 +111,36 @@ async function aiInterpretation(env, request, facts, ruleText) {
     fallback_reason: null,
   };
   if (!env.AI?.run) return { ...base, fallback_reason: "no_ai_binding" };
-  const system = "你是今日油价站的解读助手。只用用户给定的数字，不编造、不推测任何新数字、不编造日期和油价。输出 2-3 句中文，约 150 字：先说当前省份与全国均价现状，再说下次调价预测（方向、元/吨、每升变动），最后给一句加油建议（可等/可加/影响不大）。不要输出 Markdown、不要列数字表格、不要重复公式。";
+  const system = "你是今日油价站的解读助手。只用用户给定的数字，不编造、不推测任何新数字、不编造日期和油价。数字必须原样照抄，禁止四舍五入、禁止改写（例如 8.662 就写 8.662，不要写成 8.66 或 8.6）。输出 2-3 句中文，约 150 字：先说当前省份与全国均价现状，再说下次调价预测（方向、元/吨、每升变动），最后给一句加油建议（可等/可加/影响不大）。不要输出 Markdown、不要列数字表格、不要重复公式。";
   const user = `事实（只许用这些数字）：${JSON.stringify(facts)}。规则解读参考：${ruleText}`;
-  try {
-    const res = await env.AI.run(AI_MODEL, {
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      max_tokens: 400,
-      temperature: 0.2,
-    });
-    const raw = res?.response ?? res?.result?.response ?? res?.choices?.[0]?.message?.content ?? res?.result?.choices?.[0]?.message?.content ?? "";
-    const text = cleanAiText(raw);
-    if (!text || text.length < 20) return { ...base, fallback_reason: "empty_ai_output" };
-    if (!aiNumbersPass(text, facts)) return { ...base, fallback_reason: "number_guard_failed" };
-    return { ...base, source: "workers-ai", model: AI_MODEL, interpretation: text, fallback_reason: null };
-  } catch (e) {
-    return { ...base, fallback_reason: `ai_error:${String(e?.message || e).slice(0, 80)}` };
+  // 守门失败时重试一次（temperature 0 + 更严指令），仍失败则回退规则解读
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await env.AI.run(AI_MODEL, {
+        messages: [
+          { role: "system", content: attempt === 0 ? system : system + "再次强调：数字原样照抄，任何数字都不能改写。"},
+          { role: "user", content: user },
+        ],
+        max_tokens: 400,
+        temperature: attempt === 0 ? 0.2 : 0,
+      });
+      const raw = res?.response ?? res?.result?.response ?? res?.choices?.[0]?.message?.content ?? res?.result?.choices?.[0]?.message?.content ?? "";
+      const text = cleanAiText(raw);
+      if (!text || text.length < 20) {
+        if (attempt === 0) continue;
+        return { ...base, fallback_reason: "empty_ai_output" };
+      }
+      if (!aiNumbersPass(text, facts)) {
+        if (attempt === 0) continue;
+        return { ...base, fallback_reason: "number_guard_failed" };
+      }
+      return { ...base, source: "workers-ai", model: AI_MODEL, interpretation: text, fallback_reason: null };
+    } catch (e) {
+      if (attempt === 0) continue;
+      return { ...base, fallback_reason: `ai_error:${String(e?.message || e).slice(0, 80)}` };
+    }
   }
+  return { ...base, fallback_reason: "number_guard_failed" };
 }
 
 export default {
