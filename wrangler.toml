@@ -9,3 +9,6 @@ not_found_handling = "none"
 
 [vars]
 DATA_SOURCE = "http://www.qiyoujiage.com/"
+
+[ai]
+binding = "AI"
