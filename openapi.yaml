@@ -31,6 +31,12 @@ paths:
     get: {summary: 城市级（收集中）, responses: {"200": {description: OK}}}
   /api/forecast:
     get: {summary: 下次调价预测（no_data 时不编造）, responses: {"200": {description: OK}}}
+  /api/ai-interpretation:
+    get:
+      summary: AI 解读（Workers AI + 数字守门，失败回退规则解读）
+      parameters:
+        - {name: province, in: query, schema: {type: string}, example: 上海}
+      responses: {"200": {description: OK}}
   /api/global:
     get: {summary: 全球对比（待接入）, responses: {"200": {description: OK}}}
   /api/export.csv:
