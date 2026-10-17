@@ -121,7 +121,7 @@ async function aiInterpretation(env, request, facts, ruleText) {
     data_as_of: { prices_fetched_at: facts.prices_fetched_at, forecast_as_of: facts.forecast_as_of },
     interpretation: ruleText,
     facts_used: facts,
-    disclaimer: "AI 解读仅把已验证数据组织成自然语言，趋势与预测均来自规则估算（10 工作日原油变化率 + 50 元/吨门槛），不产生新预测；正式结果以国家发改委官方通知为准。",
+    disclaimer: "AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。",
     fallback_reason: null,
   };
   if (!env.AI?.run) return { ...base, fallback_reason: "no_ai_binding" };
