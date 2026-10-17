@@ -39,7 +39,6 @@
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">AI 解读 · 国际油价趋势预测 <span id="aiTime" class="ml-1 text-xs font-normal opacity-70"></span></h2>
-      <p class="hidden text-xs opacity-70 sm:block">只用已验证数据，不编数字</p>
     </div>
     <div id="aiBox" class="mt-4"><div class="skeleton h-16 w-full"></div></div>
   </div>
@@ -217,9 +216,6 @@ async function renderAi() {
   if (!box) return;
   try {
     const d = await j(`/api/ai-interpretation?province=${encodeURIComponent(CURRENT)}`);
-    const badge = d.source === 'workers-ai'
-      ? '<span class="badge badge-primary badge-soft whitespace-nowrap">AI 解读</span>'
-      : '<span class="badge badge-ghost whitespace-nowrap">规则解读（AI 暂不可用）</span>';
     const timeEl = document.getElementById('aiTime');
     if (timeEl && d.generated_at) timeEl.textContent = `解读时间：${fmtDateTime(d.generated_at)}`;
     const f = d.facts_used || {};
@@ -227,7 +223,7 @@ async function renderAi() {
     const chips = [pct('Brent', f.brent?.change_rate_pct), pct('WTI', f.wti?.change_rate_pct), pct('一揽子', f.change_rate_pct)].join('')
       + (f.forecast_direction && f.estimated_adjustment_yuan_per_ton != null ? `<span class="badge ${f.estimated_adjustment_yuan_per_ton > 0 ? 'badge-error' : f.estimated_adjustment_yuan_per_ton < 0 ? 'badge-success' : 'badge-ghost'} badge-soft whitespace-nowrap">预计${f.forecast_direction} ${f.estimated_adjustment_yuan_per_ton} 元/吨</span>` : '')
       + (f.delta_per_liter?.p92 != null ? `<span class="badge badge-ghost badge-soft whitespace-nowrap">每升 ${f.delta_per_liter.p92 > 0 ? '+' : ''}${f.delta_per_liter.p92.toFixed(3)} 元</span>` : '');
-    box.innerHTML = `<div class="flex flex-wrap items-center gap-2">${badge}</div><div class="mt-2 flex flex-wrap gap-1.5">${chips}</div><p class="mt-2 text-sm leading-relaxed">${(d.interpretation || '').replace(/</g, '&lt;')}</p><p class="mt-2 text-xs leading-relaxed opacity-70">AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。</p>`;
+    box.innerHTML = `<div class="mt-2 flex flex-wrap gap-1.5">${chips}</div><p class="mt-2 text-sm leading-relaxed">${(d.interpretation || '').replace(/</g, '&lt;')}</p><p class="mt-2 text-xs leading-relaxed opacity-70">AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。</p>`;
   } catch (e) {
     box.innerHTML = '<p class="text-sm opacity-70">AI 解读暂不可用，下方规则预测仍可查看。</p>';
   }
