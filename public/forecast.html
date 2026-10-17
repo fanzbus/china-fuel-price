@@ -38,6 +38,15 @@
 <section class="card border border-base-300/60 bg-base-200 shadow-md shadow-base-300/20">
   <div class="card-body">
     <div class="flex items-center justify-between gap-3">
+      <h2 class="card-title text-[15px]">AI 解读</h2>
+      <p class="hidden text-xs opacity-70 sm:block">Workers AI · 只用已验证数据，不编数字</p>
+    </div>
+    <div id="aiBox" class="mt-4"><div class="skeleton h-16 w-full"></div></div>
+  </div>
+</section>
+<section class="card border border-base-300/60 bg-base-200 shadow-md shadow-base-300/20">
+  <div class="card-body">
+    <div class="flex items-center justify-between gap-3">
       <h2 class="card-title text-[15px]">下次调价预测</h2>
       <p class="hidden text-xs opacity-70 sm:block">发改委 50 元/吨门槛</p>
     </div>
@@ -203,6 +212,22 @@ function renderPerLiter() {
     return `<tr class="${p.province === CURRENT ? 'bg-primary/5' : ''}"><td class="font-medium">${p.province}</td>${cell('p92')}${cell('p95')}${cell('p98')}${cell('d0')}</tr>`;
   }).join('');
 }
+async function renderAi() {
+  const box = document.getElementById('aiBox');
+  if (!box) return;
+  try {
+    const d = await j(`/api/ai-interpretation?province=${encodeURIComponent(CURRENT)}`);
+    const badge = d.source === 'workers-ai'
+      ? '<span class="badge badge-primary badge-soft whitespace-nowrap">AI 解读</span>'
+      : '<span class="badge badge-ghost whitespace-nowrap">规则解读（AI 暂不可用）</span>';
+    const meta = d.source === 'workers-ai'
+      ? `模型 ${d.model || ''} · 生成于 ${fmtDateTime(d.generated_at)}${d.cached ? ' · 缓存' : ''}`
+      : 'AI 暂不可用时自动回退规则解读，内容仍只用已验证数据';
+    box.innerHTML = `<div class="flex flex-wrap items-center gap-2">${badge}<span class="text-xs opacity-70">${meta}</span></div><p class="mt-2 text-sm leading-relaxed">${(d.interpretation || '').replace(/</g, '&lt;')}</p><p class="mt-2 text-xs leading-relaxed opacity-70">${d.disclaimer || ''}</p>`;
+  } catch (e) {
+    box.innerHTML = '<p class="text-sm opacity-70">AI 解读暂不可用，下方规则预测仍可查看。</p>';
+  }
+}
 function renderForecast() {
   const box = document.getElementById('forecastBox');
   const fc = FORECAST;
@@ -236,7 +261,7 @@ function renderForecast() {
     ${fc.floor_ceiling && fc.floor_ceiling.brent_latest_near_130 ? '<div class="alert alert-warning mt-3 py-2 text-sm"><span>提示：Brent 最新价已接近 130 美元天花板附近（单项提示，不触发天花板；以一揽子均价为准）。</span></div>' : ''}
     <details class="collapse collapse-arrow border border-base-300 bg-base-100 mt-3"><summary class="collapse-title text-sm font-semibold">方法与来源（点击展开）</summary><div class="collapse-content text-xs leading-relaxed opacity-80"><p>${fc.method || ''}</p><p class="mt-2">${fc.derivation || ''}</p><p class="mt-2">${fc.disclaimer || ''} 来源：${fc.oil_source === 'fred' ? 'FRED（美联储）Brent / WTI' : 'Yahoo Finance（BZ=F / CL=F 期货）'} · ER-API 汇率</p></div></details>`;
 }
-window.onProvinceChange = () => { CITY_PROV = CURRENT; renderForecast(); renderPerLiter(); renderCities(); };
+window.onProvinceChange = () => { CITY_PROV = CURRENT; renderAi(); renderForecast(); renderPerLiter(); renderCities(); };
 async function load() {
   initShared();
   const [prices, fc, g, ci] = await Promise.all([j('/api/prices'), j('/api/forecast'), j('/api/global'), j('/api/cities')]);
@@ -250,9 +275,9 @@ async function load() {
     citySel.innerHTML = DATA.provinces.map(r => `<option ${r.province === CITY_PROV ? 'selected' : ''}>${r.province}</option>`).join('');
     citySel.onchange = () => { CITY_PROV = citySel.value; renderCities(); };
   }
-  initProvinceSwitcher(() => { CITY_PROV = CURRENT; renderForecast(); renderPerLiter(); renderCities(); });
+  initProvinceSwitcher(() => { CITY_PROV = CURRENT; renderAi(); renderForecast(); renderPerLiter(); renderCities(); });
   renderGlobal(); renderCities();
-  renderForecast(); renderPerLiter();
+  renderAi(); renderForecast(); renderPerLiter();
 }
 registerSW();
 load();
