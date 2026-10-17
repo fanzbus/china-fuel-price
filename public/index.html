@@ -75,6 +75,7 @@ canvas{width:100%;height:auto;max-height:280px}
     <div id="aiCard" class="mt-4 rounded-xl border border-base-300 bg-base-100 p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <p class="text-sm font-semibold">AI 解读 · 国际油价趋势预测 <span id="aiTime" class="ml-1 text-xs font-normal opacity-70"></span></p>
+        <span id="aiBadge"><span class="badge badge-ghost whitespace-nowrap">加载中…</span></span>
       </div>
       <div id="aiTrendChips" class="mt-2 flex flex-wrap gap-1.5"></div>
       <p id="aiText" class="mt-2 text-sm leading-relaxed opacity-80"><span class="skeleton inline-block h-4 w-full"></span></p>
@@ -244,12 +245,16 @@ function pctChip(label, v) {
 }
 async function renderAi() {
   const textEl = document.getElementById('aiText');
+  const badgeEl = document.getElementById('aiBadge');
   const chipsEl = document.getElementById('aiTrendChips');
   const metaEl = document.getElementById('aiMeta');
   if (!textEl) return;
   try {
     const d = await j(`/api/ai-interpretation?province=${encodeURIComponent(CURRENT)}`);
     const f = d.facts_used || {};
+    if (badgeEl) badgeEl.innerHTML = d.source === 'workers-ai'
+      ? '<span class="badge badge-primary badge-soft whitespace-nowrap">AI 解读</span>'
+      : '<span class="badge badge-ghost whitespace-nowrap">规则解读（AI 暂不可用）</span>';
     // 趋势指标条：只用 facts 里的确定性数字，不解析 AI 文本，兜底时也正确
     const chips = [];
     if (f.brent) chips.push(pctChip('Brent', f.brent.change_rate_pct));
@@ -271,6 +276,7 @@ async function renderAi() {
     metaEl.textContent = 'AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。';
   } catch (e) {
     textEl.textContent = 'AI 解读暂不可用，下方价格表仍可查看。';
+    if (badgeEl) badgeEl.innerHTML = '<span class="badge badge-ghost whitespace-nowrap">暂不可用</span>';
     metaEl.textContent = 'AI 解读基于当前数据分析，不产生新的预测；正式结果以国家发改委官方通知为准。';
   }
 }
