@@ -72,7 +72,15 @@ canvas{width:100%;height:auto;max-height:280px}
       </div>
     </div>
     <p id="interpretation" class="mt-5 border-t border-base-300 pt-4 text-sm leading-relaxed opacity-80"></p>
-    <p class="mt-2 text-xs"><a href="/forecast" class="link link-primary">查看 AI 解读 →</a><span class="opacity-70">（预测页，Workers AI 生成，只用已验证数据）</span></p>
+    <div id="aiCard" class="mt-4 rounded-xl border border-base-300 bg-base-100 p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-sm font-semibold">AI 解读 · 国际油价趋势预测</p>
+        <span id="aiBadge"><span class="badge badge-ghost whitespace-nowrap">加载中…</span></span>
+      </div>
+      <div id="aiTrendChips" class="mt-2 flex flex-wrap gap-1.5"></div>
+      <p id="aiText" class="mt-2 text-sm leading-relaxed opacity-80"><span class="skeleton inline-block h-4 w-full"></span></p>
+      <p id="aiMeta" class="mt-2 text-xs opacity-70"></p>
+    </div>
     <div id="avgGrid" class="stats stats-vertical mt-5 w-full shadow-sm sm:stats-horizontal"></div>
   </div>
 </section>
@@ -229,6 +237,48 @@ function renderRank() {
   document.getElementById('topExp').innerHTML = s.slice(0, 3).map(row).join('');
   document.getElementById('topCheap').innerHTML = s.slice(-3).reverse().map(row).join('');
 }
+function pctChip(label, v) {
+  if (v == null) return '';
+  const cls = v > 0 ? 'badge-error' : v < 0 ? 'badge-success' : 'badge-ghost';
+  const arrow = v > 0 ? '↑' : v < 0 ? '↓' : '—';
+  return `<span class="badge ${cls} badge-soft whitespace-nowrap">${label} ${arrow} ${v > 0 ? '+' : ''}${v}%</span>`;
+}
+async function renderAi() {
+  const textEl = document.getElementById('aiText');
+  const badgeEl = document.getElementById('aiBadge');
+  const chipsEl = document.getElementById('aiTrendChips');
+  const metaEl = document.getElementById('aiMeta');
+  if (!textEl) return;
+  try {
+    const d = await j(`/api/ai-interpretation?province=${encodeURIComponent(CURRENT)}`);
+    const f = d.facts_used || {};
+    badgeEl.innerHTML = d.source === 'workers-ai'
+      ? '<span class="badge badge-primary badge-soft whitespace-nowrap">AI 解读</span>'
+      : '<span class="badge badge-ghost whitespace-nowrap">规则解读（AI 暂不可用）</span>';
+    // 趋势指标条：只用 facts 里的确定性数字，不解析 AI 文本，兜底时也正确
+    const chips = [];
+    if (f.brent) chips.push(pctChip('Brent', f.brent.change_rate_pct));
+    if (f.wti) chips.push(pctChip('WTI', f.wti.change_rate_pct));
+    if (f.change_rate_pct != null) chips.push(pctChip('一揽子', f.change_rate_pct));
+    if (f.forecast_direction && f.estimated_adjustment_yuan_per_ton != null) {
+      const dirCls = f.estimated_adjustment_yuan_per_ton > 0 ? 'badge-error' : f.estimated_adjustment_yuan_per_ton < 0 ? 'badge-success' : 'badge-ghost';
+      chips.push(`<span class="badge ${dirCls} badge-soft whitespace-nowrap">预计${f.forecast_direction} ${f.estimated_adjustment_yuan_per_ton} 元/吨</span>`);
+    }
+    if (f.delta_per_liter && f.delta_per_liter.p92 != null) {
+      const dv = f.delta_per_liter.p92;
+      const dCls = dv > 0 ? 'badge-error' : dv < 0 ? 'badge-success' : 'badge-ghost';
+      chips.push(`<span class="badge ${dCls} badge-soft whitespace-nowrap">每升 ${dv > 0 ? '+' : ''}${dv.toFixed(3)} 元</span>`);
+    }
+    chipsEl.innerHTML = chips.join('') || '<span class="text-xs opacity-70">暂无预测数据</span>';
+    textEl.textContent = d.interpretation || '';
+    metaEl.textContent = d.source === 'workers-ai'
+      ? `模型 ${d.model || ''} · 生成于 ${fmtDateTime(d.generated_at)}${d.cached ? ' · 缓存' : ''} · ${d.disclaimer || ''}`
+      : 'AI 暂不可用时自动回退规则解读，内容仍只用已验证数据';
+  } catch (e) {
+    textEl.textContent = 'AI 解读暂不可用，下方价格表仍可查看。';
+    badgeEl.innerHTML = '<span class="badge badge-ghost whitespace-nowrap">暂不可用</span>';
+  }
+}
 async function load() {
   initShared();
   DATA = await j('/api/prices');
@@ -241,8 +291,8 @@ async function load() {
   CURRENT = getCurrentProvince();
   if (!DATA.provinces.find(r => r.province === CURRENT)) CURRENT = '上海';
   populateProvinceSelect(document.getElementById('topProvince'), DATA.provinces.map(r => r.province));
-  initProvinceSwitcher(() => renderPrices());
-  renderPrices();
+  initProvinceSwitcher(() => { renderPrices(); renderAi(); });
+  renderPrices(); renderAi();
 }
 document.getElementById('q').oninput = () => { renderTable(); };
 document.getElementById('sortSel').onchange = e => { OIL = e.target.value; renderPrices(); };
